@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/airq
+    username: airq
+    password: airq
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+device:
+  keys:
+    "[517]": dev-301-secret   # 교실ID: ESP32의 DEVICE_KEY
