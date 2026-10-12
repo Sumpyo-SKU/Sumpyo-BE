@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/airq
-    username: airq
-    password: airq
+    url: ${DB_URL:jdbc:postgresql://localhost:5434/sumpyo}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
@@ -10,4 +10,4 @@ spring:
 
 device:
   keys:
-    "[517]": dev-301-secret   # 교실ID: ESP32의 DEVICE_KEY
+    "[517]": ${DEVICE_KEY_517}
