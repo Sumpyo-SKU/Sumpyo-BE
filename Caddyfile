@@ -1,0 +1,6 @@
+# HTTPS 리버스 프록시. 인증서는 Let's Encrypt로 자동 발급/갱신됨
+# API_DOMAIN 은 EC2의 ~/sumpyo/.env 에서 설정 (예: api.likelion.store)
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy app:8080
+}
