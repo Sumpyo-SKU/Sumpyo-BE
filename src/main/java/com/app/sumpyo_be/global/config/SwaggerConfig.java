@@ -37,7 +37,7 @@ public class SwaggerConfig {
 
         return new OpenAPI()
                 .addServersItem(localServer)
-                .info(new Info().title("Capstone API 명세서").version("1.0").description("Swagger"))
+                .info(new Info().title("SumPyo API 명세서").version("1.0").description("Swagger"))
                 .addSecurityItem(securityRequirement)
                 .components(components);
     }
