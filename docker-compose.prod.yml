@@ -1,0 +1,50 @@
+# EC2 운영용 compose (GitHub Actions가 ~/sumpyo 로 복사함)
+# 같은 폴더의 .env 는 EC2에서 직접 만들어 둠 (git에 올리지 않음)
+services:
+  db:
+    image: postgres:16
+    container_name: sumpyo-postgres
+    environment:
+      POSTGRES_DB: sumpyo
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+    ports:
+      - "127.0.0.1:5432:5432"   # 외부 미공개. 접속은 SSH 터널로만
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d sumpyo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: sumpyo-redis
+    restart: unless-stopped
+
+  app:
+    image: ${DOCKERHUB_USERNAME}/sumpyo-be:${IMAGE_TAG:-latest}
+    container_name: sumpyo-app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/sumpyo
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DEVICE_KEY_517: ${DEVICE_KEY_517}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"   # 1GB 인스턴스 기준
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
