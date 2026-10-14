@@ -1,6 +1,6 @@
 package com.app.sumpyo_be.global.exception;
 
-import com.capstone.be.global.exception.model.BaseErrorCode;
+import com.app.sumpyo_be.global.exception.model.BaseErrorCode;
 import lombok.Getter;
 
 /**

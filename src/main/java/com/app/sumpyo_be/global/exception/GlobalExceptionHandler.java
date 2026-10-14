@@ -1,7 +1,7 @@
 package com.app.sumpyo_be.global.exception;
 
-import com.capstone.be.global.common.BaseResponse;
-import com.capstone.be.global.exception.model.BaseErrorCode;
+import com.app.sumpyo_be.global.common.BaseResponse;
+import com.app.sumpyo_be.global.exception.model.BaseErrorCode;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
