@@ -10,6 +10,10 @@ spring:
       ddl-auto: update
     open-in-view: false
 
+server:
+  # Caddy(HTTPS 프록시) 뒤에서 X-Forwarded-* 헤더를 신뢰 → Swagger 등이 https 주소를 생성
+  forward-headers-strategy: framework
+
 device:
   keys:
     "[517]": ${DEVICE_KEY_517}
