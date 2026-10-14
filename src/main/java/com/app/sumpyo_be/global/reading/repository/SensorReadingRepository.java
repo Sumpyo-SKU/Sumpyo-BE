@@ -9,4 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SensorReadingRepository extends JpaRepository<SensorReading, Long> {
   Optional<SensorReading> findTopByRoomIdOrderByMeasuredAtDesc(String roomId);
   List<SensorReading> findByRoomIdAndMeasuredAtAfterOrderByMeasuredAtAsc(String roomId, LocalDateTime after);
+  // [from, to) 구간 조회
+  List<SensorReading> findByRoomIdAndMeasuredAtGreaterThanEqualAndMeasuredAtLessThanOrderByMeasuredAtAsc(
+      String roomId, LocalDateTime from, LocalDateTime to);
 }

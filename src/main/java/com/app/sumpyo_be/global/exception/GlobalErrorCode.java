@@ -14,6 +14,8 @@ public enum GlobalErrorCode implements BaseErrorCode {
     ACCESS_DENIED("G004", "해당 리소스에 접근할 권한이 없습니다.", HttpStatus.FORBIDDEN),
     INVALID_TOKEN("G005", "유효하지 않거나 만료된 토큰입니다.", HttpStatus.UNAUTHORIZED),
     INVALID_DEVICE_KEY("G006", "유효하지 않은 기기 키입니다.", HttpStatus.UNAUTHORIZED),
+    READING_NOT_FOUND("G007", "측정 데이터가 없습니다.", HttpStatus.NOT_FOUND),
+    INVALID_TIME_RANGE("G008", "조회 구간이 올바르지 않습니다. (from < to, 최대 31일)", HttpStatus.BAD_REQUEST),
     ;
 
     private final String code;
