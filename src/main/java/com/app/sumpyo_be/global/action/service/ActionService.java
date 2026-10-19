@@ -76,7 +76,7 @@ public class ActionService {
     // 조치 생성 당시 기준값이 있으면 그것, 없으면 현재 사용자 기준값
     int threshold = action.getThreshold() != null ? action.getThreshold() : thresholdService.current().co2();
     boolean goalReached = actualCo2After != null && actualCo2After < threshold;
-    return new ActionCompleteResponse(action.getCo2Before(), actualCo2After, goalReached);
+    return new ActionCompleteResponse(action.getCo2Before(), actualCo2After, goalReached, action.getStatus());
   }
 
   private Action findAction(Long actionId) {

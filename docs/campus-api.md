@@ -65,7 +65,7 @@
   "humidityLabel": "조금 습해요",
   "ventilating": false,
   "pendingAction": { "actionId": 1, "message": "기준 초과 · 환기 전" },
-  "currentClass": { "courseName": "자료구조", "start": "21:00", "end": "23:00", "capacity": 42, "enrolled": 18 },
+  "currentClass": { "courseName": "자료구조", "start": "21:00", "end": "23:00" },
   "nextClass": { "courseName": "운영체제", "start": "23:10", "end": "23:50", "tip": "쉬는 시간에 창문 환기 추천" }
 }
 ```
@@ -74,10 +74,22 @@
 - `pendingAction`: `PENDING`/`CHECKED` 중 최신 1개, 없으면 null.
   `message` 는 OVER "기준 초과 · 환기 전", PREDICTED "약 N분 뒤 기준 초과 예상", 그 외 `action.summary`
 - `currentClass`/`nextClass`: 오늘 요일 시간표에서 오늘 휴강(`class_cancellation`)인 수업은 뺀다. 없으면 null.
-  `capacity` = `room.capacity`, `enrolled` = `class_schedule.enrolled` (미정이면 null)
-- `nextClass.tip`: OVER/PREDICTED "쉬는 시간에 창문 환기 추천", NORMAL "환기 필요 없음", NO_SENSOR null
+  인원 표시는 화면에서 빠져 내려주지 않는다 (`room.capacity`, `class_schedule.enrolled` 컬럼은 남겨둠)
+- `nextClass.tip`: 환기가 필요할 때(OVER/PREDICTED)만 "쉬는 시간에 창문 환기 추천", 아니면 null
 - CO2 센서가 없는 방(화장실 등)은 측정 관련 필드가 모두 null
 - 404 `존재하지 않는 공간입니다.`
+
+## GET /api/rooms/{roomId}/readings/latest
+
+마지막 측정값. 10분 넘게 지난 값이어도 내려주고 `sensorOnline: false`. 측정이 한 번도 없으면 값은 모두 null.
+`level` 은 `co2Level` 과 같은 규칙.
+
+```json
+{ "roomId": 7, "co2": 780, "temp": 23, "humidity": 55, "comfortScore": 89, "level": "NORMAL",
+  "measuredAt": "2026-10-19T22:19:14.930", "sensorOnline": true }
+```
+
+> 예전 `GET /api/rooms/{code}/readings/latest` (code 기반)는 경로가 겹쳐 이걸로 대체됨.
 
 ## GET /api/rooms/{roomId}/readings?from=&to=&interval=
 
@@ -136,21 +148,23 @@ GET /api/rooms/7/readings?from=2026-10-19T09:00:00&to=2026-10-19T18:00:00&interv
   "co2Before": 1260,
   "expectedCo2After": 800,
   "actualCo2After": null,
-  "steps": [],
+  "steps": [ { "type": "WINDOW_OPEN", "label": "창문 열기", "doneAt": "2026-10-19T22:19:14.697" } ],
   "status": "IN_PROGRESS",
   "handledBy": null
 }
 ```
 
 - `handledBy`: 처리자 이름 (비로그인 null)
-- `steps`: 아직 내용 미정이라 빈 배열
+- `complaintId`: 민원으로 생긴 조치(`source: COMPLAINT`)만 값이 있고, 예측 조치는 null
+- `steps`: action 의 시각 컬럼 중 기록된 것만 시간 순.
+  `window_opened_at` → `WINDOW_OPEN` "창문 열기", `ac_on_at` → `AC_ON` "냉난방기 켜기", `window_closed_at` → `WINDOW_CLOSE` "창문 닫기"
 
 ## POST /api/actions/{actionId}/complete
 
 `IN_PROGRESS` → `DONE`. `actual_co2_after` = 최신 CO2, `window_closed_at`·`completed_at` = now. 연결된 민원(`complaint_id`)도 `DONE`.
 
 ```json
-{ "co2Before": 1260, "actualCo2After": 780, "goalReached": true }
+{ "co2Before": 1250, "actualCo2After": 780, "goalReached": true, "status": "DONE" }
 ```
 
 - `goalReached` (임시 정의): `actualCo2After` 가 조치의 `threshold`(없으면 현재 기준값) 미만이면 true
@@ -159,3 +173,4 @@ GET /api/rooms/7/readings?from=2026-10-19T09:00:00&to=2026-10-19T18:00:00&interv
 
 - 404 `존재하지 않는 조치입니다.`
 - 409 `현재 상태에서는 처리할 수 없는 조치입니다.` (예: DONE 을 다시 start, IN_PROGRESS 를 check)
+- check 는 이미 CHECKED 여도 200 (멱등). start/complete 는 같은 요청을 다시 보내면 409

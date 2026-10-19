@@ -11,6 +11,7 @@ import com.app.sumpyo_be.global.prediction.entity.Prediction;
 import com.app.sumpyo_be.global.prediction.repository.PredictionRepository;
 import com.app.sumpyo_be.global.reading.entity.SensorReading;
 import com.app.sumpyo_be.global.reading.repository.SensorReadingRepository;
+import com.app.sumpyo_be.global.room.dto.LatestReadingResponse;
 import com.app.sumpyo_be.global.room.dto.PredictionSeriesResponse;
 import com.app.sumpyo_be.global.room.dto.ReadingSeriesResponse;
 import com.app.sumpyo_be.global.room.dto.RoomResponse;
@@ -84,9 +85,23 @@ public class RoomService {
         ventilating,
         pendingAction,
         cur == null ? null : new CurrentClass(cur.getCourseName(), hhmm(cur.getStartTime()),
-            hhmm(cur.getEndTime()), room.getCapacity(), cur.getEnrolled()),
+            hhmm(cur.getEndTime())),
         next == null ? null : new NextClass(next.getCourseName(), hhmm(next.getStartTime()),
             hhmm(next.getEndTime()), AirQualityJudge.nextClassTip(c.status())));
+  }
+
+  /** 마지막 측정값. 10분 넘게 지났으면 sensorOnline=false (값은 그대로 내려줌) */
+  public LatestReadingResponse getLatestReading(Long roomId) {
+    Room room = findRoom(roomId);
+    LocalDateTime now = LocalDateTime.now(clock);
+    Thresholds t = thresholdService.current();
+    return readingRepository.findTopByRoomOrderByMeasuredAtDesc(room)
+        .map(r -> new LatestReadingResponse(roomId, r.getCo2(), r.getTemp(), r.getHumidity(),
+            AirQualityJudge.comfortScore(r.getCo2(), r.getTemp(), r.getHumidity(), t),
+            AirQualityJudge.co2Level(r.getCo2(), t.co2()),
+            r.getMeasuredAt(),
+            !r.getMeasuredAt().isBefore(now.minus(AirQualityJudge.FRESH_WINDOW))))
+        .orElseGet(() -> new LatestReadingResponse(roomId, null, null, null, null, null, null, false));
   }
 
   /** 그래프 실측. from/to 가 없으면 오늘 0시 ~ 지금 */

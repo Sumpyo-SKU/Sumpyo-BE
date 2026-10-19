@@ -50,15 +50,9 @@ public class SensorReadingController {
     return BaseResponse.success("측정 데이터가 저장되었습니다.", null);
   }
 
-  @GetMapping("/latest")
-  public BaseResponse<SensorReadingResponse> latest(@PathVariable String code) {
-    Room room = findRoom(deviceProperties.resolveCode(code));
-    SensorReading reading = repository.findTopByRoomOrderByMeasuredAtDesc(room)
-        .orElseThrow(() -> new CustomException(GlobalErrorCode.READING_NOT_FOUND));
-    return BaseResponse.success(SensorReadingResponse.from(reading, room.getCode()));
-  }
-
-  // GET /api/rooms/{code}/readings (최근 N분)는 그래프 API GET /api/rooms/{roomId}/readings 와 경로가 겹쳐 제거.
+  // 아래 두 GET 은 roomId 기반 API 와 경로가 겹쳐 RoomController 로 옮김:
+  //   GET /api/rooms/{code}/readings        → GET /api/rooms/{roomId}/readings (그래프 실측)
+  //   GET /api/rooms/{code}/readings/latest → GET /api/rooms/{roomId}/readings/latest
 
   /**
    * 기록 화면용 구간 조회. [from, to) 범위이며 최대 31일까지 조회할 수 있습니다.

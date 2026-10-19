@@ -15,14 +15,13 @@ public record ActionStartResponse(
     Integer co2Before,
     Integer expectedCo2After,
     Integer actualCo2After,
-    List<String> steps,
+    List<ActionStep> steps,   // 기록된 단계만 시간 순 (start 직후엔 WINDOW_OPEN 1개)
     ActionStatus status,
     String handledBy      // 처리자 이름, 비로그인이면 null
 ) {
   public static ActionStartResponse of(Action a, String handledBy) {
-    // TODO: steps(조치 단계 안내) 내용이 명세에 정해지면 채우기. 지금은 빈 배열.
     return new ActionStartResponse(a.getId(), a.getRoom().getId(), a.getSource(), a.getComplaintId(),
         a.getSummary(), a.getCo2Before(), a.getExpectedCo2After(), a.getActualCo2After(),
-        List.of(), a.getStatus(), handledBy);
+        ActionStep.from(a), a.getStatus(), handledBy);
   }
 }

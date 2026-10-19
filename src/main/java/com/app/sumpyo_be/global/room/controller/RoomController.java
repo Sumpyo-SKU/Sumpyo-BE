@@ -1,6 +1,7 @@
 package com.app.sumpyo_be.global.room.controller;
 
 import com.app.sumpyo_be.global.common.BaseResponse;
+import com.app.sumpyo_be.global.room.dto.LatestReadingResponse;
 import com.app.sumpyo_be.global.room.dto.PredictionSeriesResponse;
 import com.app.sumpyo_be.global.room.dto.ReadingSeriesResponse;
 import com.app.sumpyo_be.global.room.dto.RoomResponse;
@@ -27,6 +28,12 @@ public class RoomController {
   @GetMapping
   public BaseResponse<RoomResponse> room(@PathVariable Long roomId) {
     return BaseResponse.success(roomService.getRoom(roomId));
+  }
+
+  /** 마지막 측정값 + 센서 연결 여부 */
+  @GetMapping("/readings/latest")
+  public BaseResponse<LatestReadingResponse> latestReading(@PathVariable Long roomId) {
+    return BaseResponse.success(roomService.getLatestReading(roomId));
   }
 
   /** 그래프 실측. from/to 를 비우면 오늘 0시 ~ 지금, interval(분) 기본 5 */

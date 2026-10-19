@@ -170,12 +170,8 @@ public final class AirQualityJudge {
     return Math.max(0, Math.min(100, score));
   }
 
-  /** 다음 수업 카드의 팁 */
+  /** 다음 수업 카드의 팁. 환기가 필요할 때(OVER/PREDICTED)만, 아니면 null */
   public static String nextClassTip(RoomStatus status) {
-    return switch (status) {
-      case OVER, PREDICTED -> "쉬는 시간에 창문 환기 추천";
-      case NORMAL -> "환기 필요 없음";
-      case NO_SENSOR -> null;
-    };
+    return isAlert(status) ? "쉬는 시간에 창문 환기 추천" : null;
   }
 }

@@ -25,7 +25,9 @@ public record RoomResponse(
   /** PENDING/CHECKED 중 최신 조치 */
   public record PendingAction(Long actionId, String message) {}
 
-  public record CurrentClass(String courseName, String start, String end, Integer capacity, Integer enrolled) {}
+  // 인원(room.capacity, class_schedule.enrolled)은 화면에서 빠져 내려주지 않는다. 컬럼은 남겨둠.
+  public record CurrentClass(String courseName, String start, String end) {}
 
+  /** tip: 환기가 필요할 때만 (OVER/PREDICTED), 아니면 null */
   public record NextClass(String courseName, String start, String end, String tip) {}
 }

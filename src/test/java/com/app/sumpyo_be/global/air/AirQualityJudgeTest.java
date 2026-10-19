@@ -89,6 +89,14 @@ class AirQualityJudgeTest {
     }
 
     @Test
+    void 다음_수업_팁은_환기가_필요할_때만() {
+      assertThat(AirQualityJudge.nextClassTip(RoomStatus.OVER)).isEqualTo("쉬는 시간에 창문 환기 추천");
+      assertThat(AirQualityJudge.nextClassTip(RoomStatus.PREDICTED)).isEqualTo("쉬는 시간에 창문 환기 추천");
+      assertThat(AirQualityJudge.nextClassTip(RoomStatus.NORMAL)).isNull();
+      assertThat(AirQualityJudge.nextClassTip(RoomStatus.NO_SENSOR)).isNull();
+    }
+
+    @Test
     void 경보_개수에는_OVER와_PREDICTED만() {
       assertThat(AirQualityJudge.isAlert(RoomStatus.OVER)).isTrue();
       assertThat(AirQualityJudge.isAlert(RoomStatus.PREDICTED)).isTrue();
