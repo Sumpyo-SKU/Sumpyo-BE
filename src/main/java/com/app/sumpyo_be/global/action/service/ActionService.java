@@ -1,6 +1,7 @@
 package com.app.sumpyo_be.global.action.service;
 
 import com.app.sumpyo_be.global.action.dto.ActionCompleteResponse;
+import com.app.sumpyo_be.global.action.dto.ActionListItem;
 import com.app.sumpyo_be.global.action.dto.ActionStartResponse;
 import com.app.sumpyo_be.global.action.dto.ActionStatusResponse;
 import com.app.sumpyo_be.global.action.entity.Action;
@@ -12,8 +13,10 @@ import com.app.sumpyo_be.global.complaint.repository.ComplaintRepository;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.global.member.entity.Member;
+import com.app.sumpyo_be.global.member.entity.Role;
 import com.app.sumpyo_be.global.member.repository.MemberRepository;
 import com.app.sumpyo_be.global.member.service.CurrentMemberProvider;
+import com.app.sumpyo_be.global.member.service.MemberAccess;
 import com.app.sumpyo_be.global.member.service.ThresholdService;
 import com.app.sumpyo_be.global.reading.dto.ReadingSnapshot;
 import com.app.sumpyo_be.global.reading.repository.SensorReadingRepository;
@@ -34,8 +37,34 @@ public class ActionService {
   private final ComplaintRepository complaintRepository;
   private final MemberRepository memberRepository;
   private final CurrentMemberProvider currentMemberProvider;
+  private final MemberAccess memberAccess;
   private final ThresholdService thresholdService;
   private final Clock clock;
+
+  /** 목록 기본 상태: 아직 끝나지 않은 조치 */
+  static final List<ActionStatus> ACTIVE = List.of(ActionStatus.PENDING, ActionStatus.CHECKED, ActionStatus.IN_PROGRESS);
+
+  /**
+   * 조치 목록, expectedAt(없으면 createdAt) 오름차순 = 급한 것부터.
+   * @param zone     null 이면 전체, "mine" 이면 내 담당 구역(member_zone 건물+층)의 방만. 담당 구역이 없으면 빈 목록
+   * @param statuses null/빈 값이면 PENDING·CHECKED·IN_PROGRESS
+   */
+  @Transactional(readOnly = true)
+  public List<ActionListItem> list(String zone, List<ActionStatus> statuses) {
+    List<ActionStatus> filter = statuses == null || statuses.isEmpty() ? ACTIVE : statuses;
+    List<Action> actions;
+    if (zone == null) {
+      actions = actionRepository.findListByStatusIn(filter);
+    } else if ("mine".equals(zone)) {
+      Member me = memberAccess.require(Role.WORKER, Role.ADMIN);
+      actions = actionRepository.findListInMemberZones(me.getId(), filter);
+    } else {
+      throw new CustomException(GlobalErrorCode.INVALID_ZONE_FILTER);
+    }
+    int fallbackThreshold = thresholdService.current().co2();
+    LocalDateTime now = LocalDateTime.now(clock);
+    return actions.stream().map(a -> ActionListItem.of(a, fallbackThreshold, now)).toList();
+  }
 
   /** [확인] PENDING → CHECKED. 이미 CHECKED 면 그대로 성공. */
   public ActionStatusResponse check(Long actionId) {
@@ -54,7 +83,7 @@ public class ActionService {
       throw new CustomException(GlobalErrorCode.INVALID_ACTION_STATUS);
     }
     LocalDateTime now = LocalDateTime.now(clock);
-    // TODO: 로그인 구현 전이라 null. CurrentMemberProvider 가 로그인 사용자를 돌려주면 자동으로 채워진다.
+    // 로그인 전에는 데모 근로생(worker01). 데모 계정이 없으면 null
     Long memberId = currentMemberProvider.currentMemberId().orElse(null);
     action.start(latestCo2(action.getRoom().getId(), now), memberId, now);
     return ActionStartResponse.of(action, memberName(memberId));

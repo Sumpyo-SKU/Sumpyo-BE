@@ -43,7 +43,7 @@ public class BuildingService {
   private final Clock clock;
 
   public List<BuildingResponse> getBuildings() {
-    return buildingRepository.findAll(Sort.by("id")).stream().map(BuildingResponse::from).toList();
+    return buildingRepository.findAll(Sort.by("displayOrder")).stream().map(BuildingResponse::from).toList();
   }
 
   /** 쿼리 4번 고정: 건물, 층의 방들, 방별 최신 측정값, 방별 30분 예측 */

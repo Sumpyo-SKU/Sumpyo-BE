@@ -54,4 +54,33 @@ public class Member {
 
   @Column(name = "alert_lead_minutes")
   private Integer alertLeadMinutes;
+
+  /** JPA 는 null 도 INSERT 에 넣어 DB DEFAULT 가 안 먹으므로 기본값을 여기서 채운다 (V1 DEFAULT 와 같은 값) */
+  public static Member create(String loginId, String encodedPassword, String name, Role role) {
+    Member m = new Member();
+    m.loginId = loginId;
+    m.password = encodedPassword;
+    m.name = name;
+    m.role = role;
+    m.co2Threshold = 1000;
+    m.tempMin = 20;
+    m.tempMax = 26;
+    m.humidityMin = 40;
+    m.humidityMax = 60;
+    m.alertEnabled = true;
+    m.alertLeadMinutes = 15;
+    return m;
+  }
+
+  /** null 인 값은 그대로 둔다 (부분 수정). 검증은 서비스에서 끝낸 뒤 호출 */
+  public void updateSettings(Integer co2Threshold, Integer tempMin, Integer tempMax,
+      Integer humidityMin, Integer humidityMax, Boolean alertEnabled, Integer alertLeadMinutes) {
+    if (co2Threshold != null) this.co2Threshold = co2Threshold;
+    if (tempMin != null) this.tempMin = tempMin;
+    if (tempMax != null) this.tempMax = tempMax;
+    if (humidityMin != null) this.humidityMin = humidityMin;
+    if (humidityMax != null) this.humidityMax = humidityMax;
+    if (alertEnabled != null) this.alertEnabled = alertEnabled;
+    if (alertLeadMinutes != null) this.alertLeadMinutes = alertLeadMinutes;
+  }
 }

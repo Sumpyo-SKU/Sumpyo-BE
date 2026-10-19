@@ -24,4 +24,12 @@ public class Building {
 
   @Column(name = "max_floor")
   private Integer maxFloor;
+
+  @Column(name = "display_order", nullable = false)
+  private Integer displayOrder;   // 건물 선택 화면 순서
+
+  /** 1층 ~ max_floor 안의 층인지. max_floor 가 비어 있으면 1층 이상이면 허용 */
+  public boolean hasFloor(int floor) {
+    return floor >= 1 && (maxFloor == null || floor <= maxFloor);
+  }
 }
