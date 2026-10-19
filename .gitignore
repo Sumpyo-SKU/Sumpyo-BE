@@ -37,3 +37,6 @@ out/
 .vscode/
 
 .env
+### DB 덤프 (운영 데이터, 커밋 금지) ###
+backup_*.sql
+*.dump

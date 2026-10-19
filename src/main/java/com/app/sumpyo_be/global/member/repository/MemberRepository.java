@@ -1,0 +1,7 @@
+package com.app.sumpyo_be.global.member.repository;
+
+import com.app.sumpyo_be.global.member.entity.Member;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface MemberRepository extends JpaRepository<Member, Long> {
+}

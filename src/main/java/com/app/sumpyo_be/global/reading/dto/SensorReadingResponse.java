@@ -5,14 +5,15 @@ import java.time.LocalDateTime;
 
 public record SensorReadingResponse(
     Long id,
-    String roomId,
+    String roomCode,
     Integer co2,
     Integer temp,
     Integer humidity,
     LocalDateTime measuredAt
 ) {
-  public static SensorReadingResponse from(SensorReading r) {
+  // open-in-view=false 라 r.getRoom() 지연 로딩을 피하려고 코드는 호출 쪽에서 넘겨받는다.
+  public static SensorReadingResponse from(SensorReading r, String roomCode) {
     return new SensorReadingResponse(
-        r.getId(), r.getRoomId(), r.getCo2(), r.getTemp(), r.getHumidity(), r.getMeasuredAt());
+        r.getId(), roomCode, r.getCo2(), r.getTemp(), r.getHumidity(), r.getMeasuredAt());
   }
 }
