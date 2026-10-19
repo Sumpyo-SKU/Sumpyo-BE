@@ -17,6 +17,9 @@ public enum GlobalErrorCode implements BaseErrorCode {
     READING_NOT_FOUND("G007", "측정 데이터가 없습니다.", HttpStatus.NOT_FOUND),
     INVALID_TIME_RANGE("G008", "조회 구간이 올바르지 않습니다. (from < to, 최대 31일)", HttpStatus.BAD_REQUEST),
     ROOM_NOT_FOUND("G009", "존재하지 않는 공간입니다.", HttpStatus.NOT_FOUND),
+    BUILDING_NOT_FOUND("G010", "존재하지 않는 건물입니다.", HttpStatus.NOT_FOUND),
+    ACTION_NOT_FOUND("G011", "존재하지 않는 조치입니다.", HttpStatus.NOT_FOUND),
+    INVALID_ACTION_STATUS("G012", "현재 상태에서는 처리할 수 없는 조치입니다.", HttpStatus.CONFLICT),
     ;
 
     private final String code;

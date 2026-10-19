@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.global.room.entity;
 
+import com.app.sumpyo_be.global.building.entity.Building;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

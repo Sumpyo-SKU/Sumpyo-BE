@@ -11,8 +11,6 @@ import com.app.sumpyo_be.global.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.global.room.entity.Room;
 import com.app.sumpyo_be.global.room.repository.RoomRepository;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -60,14 +58,7 @@ public class SensorReadingController {
     return BaseResponse.success(SensorReadingResponse.from(reading, room.getCode()));
   }
 
-  @GetMapping
-  public BaseResponse<List<SensorReadingResponse>> recent(@PathVariable String code,
-      @RequestParam(defaultValue = "60") @Min(1) @Max(1440) int minutes) {
-    Room room = findRoom(deviceProperties.resolveCode(code));
-    List<SensorReading> readings = repository.findByRoomAndMeasuredAtAfterOrderByMeasuredAtAsc(
-        room, LocalDateTime.now(KST).minusMinutes(minutes));
-    return BaseResponse.success(toResponses(readings, room));
-  }
+  // GET /api/rooms/{code}/readings (최근 N분)는 그래프 API GET /api/rooms/{roomId}/readings 와 경로가 겹쳐 제거.
 
   /**
    * 기록 화면용 구간 조회. [from, to) 범위이며 최대 31일까지 조회할 수 있습니다.

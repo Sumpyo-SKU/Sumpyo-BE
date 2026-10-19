@@ -1,4 +1,4 @@
-package com.app.sumpyo_be.global.room.entity;
+package com.app.sumpyo_be.global.building.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
