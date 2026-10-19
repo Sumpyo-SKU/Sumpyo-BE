@@ -62,7 +62,7 @@ public class BuildingService {
         .map(r -> {
           RoomCondition c = conditions.get(r.getId());
           return new MapRoom(r.getId(), r.getNumber(), r.getType(),
-              r.getMapSide(), r.getMapOrder(), c.co2(), c.status());
+              r.getMapSide(), r.getMapOrder(), c.co2(), c.status(), r.getSensorLevel().isSimulated());
         })
         .toList();
     long alertCount = mapRooms.stream().filter(r -> AirQualityJudge.isAlert(r.status())).count();

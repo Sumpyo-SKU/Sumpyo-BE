@@ -31,5 +31,10 @@ device:
   aliases:
     "[517]": bukak-617
 
+sumpyo:
+  simulator:
+    # SIM 강의실 측정값을 1분마다 생성. 끄려면 SIMULATOR_ENABLED=false
+    enabled: ${SIMULATOR_ENABLED:true}
+
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}

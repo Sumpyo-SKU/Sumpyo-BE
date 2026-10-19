@@ -19,6 +19,7 @@ public record FloorMapResponse(
       MapSide side,       // room.map_side
       Integer order,      // room.map_order
       Integer co2,        // CO2 센서 없음/끊김이면 null
-      RoomStatus status
+      RoomStatus status,
+      boolean simulated   // 시뮬레이터 데이터(sensor_level = SIM)
   ) {}
 }

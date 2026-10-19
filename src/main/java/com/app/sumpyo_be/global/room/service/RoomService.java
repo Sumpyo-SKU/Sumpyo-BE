@@ -76,6 +76,7 @@ public class RoomService {
 
     return new RoomResponse(
         room.getId(), room.getBuilding().getName(), room.getNumber(), room.getFloor(),
+        room.getSensorLevel().isSimulated(),
         c.co2(), c.temp(), c.humidity(),
         AirQualityJudge.comfortScore(c.co2(), c.temp(), c.humidity(), t),
         AirQualityJudge.co2Level(c.co2(), t.co2()),

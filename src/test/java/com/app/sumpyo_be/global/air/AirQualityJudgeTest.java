@@ -45,6 +45,14 @@ class AirQualityJudgeTest {
     }
 
     @Test
+    void 시뮬레이터_방은_FULL과_똑같이_판정() {
+      assertThat(status(SensorLevel.SIM, 1200, List.of()).status()).isEqualTo(RoomStatus.OVER);
+      assertThat(status(SensorLevel.SIM, 900, List.of(pred(10, 1100))).status()).isEqualTo(RoomStatus.PREDICTED);
+      assertThat(status(SensorLevel.SIM, 900, List.of()).status()).isEqualTo(RoomStatus.NORMAL);
+      assertThat(status(SensorLevel.SIM, null, List.of()).status()).isEqualTo(RoomStatus.NO_SENSOR);
+    }
+
+    @Test
     void CO2가_기준_이상이면_OVER() {
       StatusResult r = status(SensorLevel.FULL, 1000, List.of());
       assertThat(r.status()).isEqualTo(RoomStatus.OVER);

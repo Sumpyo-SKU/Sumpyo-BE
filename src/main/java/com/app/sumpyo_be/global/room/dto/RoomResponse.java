@@ -8,6 +8,7 @@ public record RoomResponse(
     String building,
     String number,
     int floor,
+    boolean simulated,        // 시뮬레이터 데이터(sensor_level = SIM)
     Integer co2,              // CO2 센서 없음/끊김이면 null
     Integer temp,
     Integer humidity,

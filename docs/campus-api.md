@@ -9,7 +9,8 @@
 |---|---|
 | 기준값 | 로그인 사용자 `member` 설정, 비로그인이면 CO2 1000 / 온도 20–26 / 습도 40–60 (현재 로그인 미구현 → 항상 기본값) |
 | 최신 값 | 최근 **10분** 내 마지막 `sensor_reading`. 없으면 null |
-| `status` | `OVER`: CO2 ≥ 기준 · `PREDICTED`: 30분 안 예측 중 기준 이상 있음 · `NORMAL` · `NO_SENSOR`: `sensor_level` NONE/TH 이거나 10분 넘게 데이터 없음 |
+| `status` | `OVER`: CO2 ≥ 기준 · `PREDICTED`: 30분 안 예측 중 기준 이상 있음 · `NORMAL` · `NO_SENSOR`: `sensor_level` NONE/TH 이거나 10분 넘게 데이터 없음. `SIM`(시뮬레이터) 방은 `FULL` 과 똑같이 판정 |
+| `simulated` | `sensor_level = SIM` 이면 true. 실측 센서는 617호(FULL) 하나, 나머지 강의실은 서버 시뮬레이터가 1분마다 값을 만든다 (`SensorSimulator`, 끄기: `SIMULATOR_ENABLED=false`) |
 | `co2Level` | `NORMAL` 기준 90% 미만 · `CAUTION` 90% 이상 · `CRITICAL` 120% 이상 |
 | `co2OverBy` | CO2 − 기준, 음수면 0 |
 | 온습도 라벨 | 범위 안 "적정", 2 이내로 벗어나면 "살짝 더워요/추워요"·"조금 습해요/건조해요", 더 벗어나면 "더워요/추워요/습해요/건조해요" |
@@ -36,9 +37,9 @@
   "floor": 6,
   "alertCount": 2,
   "rooms": [
-    { "roomId": 4,  "number": "화장실1", "type": "RESTROOM", "side": "TOP",    "order": 4, "co2": null, "status": "NO_SENSOR" },
-    { "roomId": 7,  "number": "617",    "type": "LECTURE",  "side": "TOP",    "order": 7, "co2": 1250, "status": "OVER" },
-    { "roomId": 12, "number": "607",    "type": "LECTURE",  "side": "BOTTOM", "order": 4, "co2": 900,  "status": "PREDICTED" }
+    { "roomId": 4,  "number": "화장실1", "type": "RESTROOM", "side": "TOP",    "order": 4, "co2": null, "status": "NO_SENSOR", "simulated": false },
+    { "roomId": 7,  "number": "617",    "type": "LECTURE",  "side": "TOP",    "order": 7, "co2": 1250, "status": "OVER",      "simulated": false },
+    { "roomId": 12, "number": "607",    "type": "LECTURE",  "side": "BOTTOM", "order": 4, "co2": 900,  "status": "PREDICTED", "simulated": true }
   ]
 }
 ```
@@ -55,6 +56,7 @@
   "building": "북악관",
   "number": "617",
   "floor": 6,
+  "simulated": false,
   "co2": 1250,
   "temp": 24,
   "humidity": 61,

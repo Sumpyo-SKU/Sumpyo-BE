@@ -48,8 +48,15 @@ public class ClassSchedule {
   /** 테스트용 */
   public static ClassSchedule of(Long id, String courseName, int dayOfWeek,
       LocalTime startTime, LocalTime endTime, Integer enrolled) {
+    return of(id, null, courseName, dayOfWeek, startTime, endTime, enrolled);
+  }
+
+  /** 테스트용 */
+  public static ClassSchedule of(Long id, Room room, String courseName, int dayOfWeek,
+      LocalTime startTime, LocalTime endTime, Integer enrolled) {
     ClassSchedule s = new ClassSchedule();
     s.id = id;
+    s.room = room;
     s.courseName = courseName;
     s.dayOfWeek = dayOfWeek;
     s.startTime = startTime;

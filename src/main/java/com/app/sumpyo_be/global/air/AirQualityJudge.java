@@ -46,10 +46,6 @@ public final class AirQualityJudge {
 
   public record StatusResult(RoomStatus status, Integer minutesToExceed) {}
 
-  /** CO2 를 재는 센서가 있는 방인지 (TH 는 온습도만) */
-  public static boolean hasCo2Sensor(SensorLevel sensorLevel) {
-    return sensorLevel == SensorLevel.FULL;
-  }
 
   /**
    * @param latestCo2   최근 10분 내 최신 측정의 CO2. 측정이 없으면(센서 끊김) null
@@ -57,7 +53,8 @@ public final class AirQualityJudge {
    */
   public static StatusResult status(SensorLevel sensorLevel, Integer latestCo2,
       List<PredictionPoint> predictions, int co2Threshold, LocalDateTime now) {
-    if (!hasCo2Sensor(sensorLevel) || latestCo2 == null) {
+    // SIM 은 FULL 과 똑같이 판정한다. TH(온습도만)/NONE 은 CO2 가 없으니 NO_SENSOR
+    if (!sensorLevel.hasCo2() || latestCo2 == null) {
       return new StatusResult(RoomStatus.NO_SENSOR, null);
     }
     if (latestCo2 >= co2Threshold) {

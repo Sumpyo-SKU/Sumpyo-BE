@@ -5,9 +5,12 @@ import com.app.sumpyo_be.global.schedule.repository.ClassCancellationRepository;
 import com.app.sumpyo_be.global.schedule.repository.ClassScheduleRepository;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +35,20 @@ public class ClassScheduleService {
     Set<Long> cancelled = new HashSet<>(cancellationRepository.findCancelledScheduleIds(
         date, schedules.stream().map(ClassSchedule::getId).toList()));
     return schedules.stream().filter(s -> !cancelled.contains(s.getId())).toList();
+  }
+
+  /** 여러 방의 해당 날짜 수업 (휴강 제외), 방 ID 별로. 쿼리 2번 고정 */
+  public Map<Long, List<ClassSchedule>> classesOn(Collection<Long> roomIds, LocalDate date) {
+    List<ClassSchedule> schedules = scheduleRepository
+        .findByRoomIdInAndDayOfWeek(roomIds, date.getDayOfWeek().getValue());
+    if (schedules.isEmpty()) {
+      return Map.of();
+    }
+    Set<Long> cancelled = new HashSet<>(cancellationRepository.findCancelledScheduleIds(
+        date, schedules.stream().map(ClassSchedule::getId).toList()));
+    return schedules.stream()
+        .filter(s -> !cancelled.contains(s.getId()))
+        .collect(Collectors.groupingBy(s -> s.getRoom().getId()));
   }
 
   /** current: start ≤ now < end, next: now 이후 처음 시작하는 수업 */

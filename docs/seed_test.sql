@@ -1,6 +1,7 @@
 -- seed_test.sql : 스웨거 테스트용 (로컬 전용, 운영 DB 금지)
 -- 앱을 한 번 띄워 Flyway V1~V3 이 적용된 뒤에 실행. 시각은 모두 "지금" 기준.
--- 607/608/618 을 테스트용으로 FULL 로 바꾸니 로컬에서만 쓸 것 (시드 V2 에서는 617 만 FULL).
+-- V4 이후 강의실은 SIM(시뮬레이터)이지만, 607/608/618 은 값이 고정돼야 해서 FULL 로 바꿔 시뮬레이터 대상에서 뺀다.
+-- 다른 SIM 방은 시뮬레이터가 계속 값을 넣으므로 alertCount 등을 정확히 맞추려면 SIMULATOR_ENABLED=false 로 앱을 띄울 것.
 
 UPDATE room SET capacity = 42 WHERE code = 'bukak-617';
 UPDATE room SET sensor_level = 'FULL' WHERE code IN ('bukak-607', 'bukak-608');
