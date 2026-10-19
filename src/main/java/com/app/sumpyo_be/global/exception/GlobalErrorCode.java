@@ -16,6 +16,7 @@ public enum GlobalErrorCode implements BaseErrorCode {
     INVALID_DEVICE_KEY("G006", "유효하지 않은 기기 키입니다.", HttpStatus.UNAUTHORIZED),
     READING_NOT_FOUND("G007", "측정 데이터가 없습니다.", HttpStatus.NOT_FOUND),
     INVALID_TIME_RANGE("G008", "조회 구간이 올바르지 않습니다. (from < to, 최대 31일)", HttpStatus.BAD_REQUEST),
+    ROOM_NOT_FOUND("G009", "존재하지 않는 공간입니다.", HttpStatus.NOT_FOUND),
     ;
 
     private final String code;
