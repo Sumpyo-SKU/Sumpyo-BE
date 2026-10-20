@@ -93,15 +93,15 @@ public class SensorSimulator {
       return Map.of();
     }
     return readingRepository.findLatestSince(missing, now.minus(RESUME_WINDOW)).stream()
-        .collect(Collectors.toMap(ReadingSnapshot::roomId, Function.identity(), (a, b) -> a));
+        .collect(Collectors.toMap(ReadingSnapshot::getRoomId, Function.identity(), (a, b) -> a));
   }
 
   private State resumeOrInitial(ReadingSnapshot last) {
-    if (last == null || last.co2() == null) {
+    if (last == null || last.getCo2() == null) {
       return SimulationModel.initial(random);
     }
-    return new State(last.co2(),
-        last.temp() != null ? last.temp() : SimulationModel.BASE_TEMP,
-        last.humidity() != null ? last.humidity() : SimulationModel.BASE_HUMIDITY);
+    return new State(last.getCo2(),
+        last.getTemp() != null ? last.getTemp() : SimulationModel.BASE_TEMP,
+        last.getHumidity() != null ? last.getHumidity() : SimulationModel.BASE_HUMIDITY);
   }
 }

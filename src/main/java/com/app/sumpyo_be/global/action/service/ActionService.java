@@ -118,7 +118,7 @@ public class ActionService {
     return readingRepository.findLatestSince(List.of(roomId), now.minus(AirQualityJudge.FRESH_WINDOW))
         .stream()
         .findFirst()
-        .map(ReadingSnapshot::co2)
+        .map(ReadingSnapshot::getCo2)
         .orElse(null);
   }
 

@@ -39,9 +39,9 @@ public class SensorReading {
   public static SensorReading of(Room room, SensorPayload p, LocalDateTime at) {
     SensorReading r = new SensorReading();
     r.room = room;
-    r.co2 = p.co2();
-    r.temp = p.temp();
-    r.humidity = p.humidity();
+    r.co2 = p.getCo2();
+    r.temp = p.getTemp();
+    r.humidity = p.getHumidity();
     r.measuredAt = at;
     return r;
   }

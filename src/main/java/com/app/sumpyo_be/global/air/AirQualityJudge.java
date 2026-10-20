@@ -73,8 +73,8 @@ public final class AirQualityJudge {
     }
     LocalDateTime horizon = now.plus(PREDICTION_HORIZON);
     return predictions.stream()
-        .filter(p -> p.co2() != null && p.co2() >= co2Threshold)
-        .map(PredictionPoint::targetAt)
+        .filter(p -> p.getCo2() != null && p.getCo2() >= co2Threshold)
+        .map(PredictionPoint::getTargetAt)
         .filter(t -> t.isAfter(now) && !t.isAfter(horizon))
         .min(Comparator.naturalOrder());
   }

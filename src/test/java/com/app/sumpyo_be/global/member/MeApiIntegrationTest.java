@@ -65,6 +65,15 @@ class MeApiIntegrationTest {
   }
 
   @Test
+  void 스웨거_문서에_한글_설명이_들어간다() throws Exception {
+    mvc.perform(get("/v3/api-docs"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.paths['/api/actions'].get.summary").value("조치 목록"))
+        .andExpect(jsonPath("$.components.schemas.ActionListItem.properties.room.description")
+            .value("강의실 이름 (건물 + 호수)"));
+  }
+
+  @Test
   void 건물_목록은_화면_순서대로_12개() throws Exception {
     mvc.perform(get("/api/buildings"))
         .andExpect(status().isOk())

@@ -54,30 +54,30 @@ public class MeService {
       throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
     }
     Map<Long, Building> buildings = buildingRepository.findAllById(request.stream()
-            .map(ZoneRequest::buildingId).filter(Objects::nonNull).toList()).stream()
+            .map(ZoneRequest::getBuildingId).filter(Objects::nonNull).toList()).stream()
         .collect(Collectors.toMap(Building::getId, Function.identity()));
 
     List<MemberZone> zones = new ArrayList<>();
     Set<Long> seenBuildings = new HashSet<>();
     for (ZoneRequest z : request) {
-      if (z.buildingId() == null) {
+      if (z.getBuildingId() == null) {
         throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
       }
-      if (!seenBuildings.add(z.buildingId())) {
+      if (!seenBuildings.add(z.getBuildingId())) {
         throw new CustomException(GlobalErrorCode.DUPLICATED_ZONE);
       }
-      Building building = buildings.get(z.buildingId());
+      Building building = buildings.get(z.getBuildingId());
       if (building == null) {
         throw new CustomException(GlobalErrorCode.BUILDING_NOT_FOUND);
       }
-      if (z.floors() == null || z.floors().isEmpty()
-          || z.floors().stream().anyMatch(f -> f == null || !building.hasFloor(f))) {
+      if (z.getFloors() == null || z.getFloors().isEmpty()
+          || z.getFloors().stream().anyMatch(f -> f == null || !building.hasFloor(f))) {
         throw new CustomException(GlobalErrorCode.INVALID_ZONE_FLOOR);
       }
-      if (new HashSet<>(z.floors()).size() != z.floors().size()) {
+      if (new HashSet<>(z.getFloors()).size() != z.getFloors().size()) {
         throw new CustomException(GlobalErrorCode.DUPLICATED_ZONE);
       }
-      z.floors().forEach(f -> zones.add(MemberZone.of(me.getId(), building, f)));
+      z.getFloors().forEach(f -> zones.add(MemberZone.of(me.getId(), building, f)));
     }
 
     zoneRepository.deleteByMemberId(me.getId());
@@ -106,19 +106,19 @@ public class MeService {
   @Transactional
   public SettingsResponse updateSettings(SettingsUpdateRequest req) {
     Member me = memberAccess.require(Role.WORKER, Role.ADMIN);
-    if (req.alertLeadMinutes() != null && !ALERT_LEAD_MINUTES.contains(req.alertLeadMinutes())) {
+    if (req.getAlertLeadMinutes() != null && !ALERT_LEAD_MINUTES.contains(req.getAlertLeadMinutes())) {
       throw new CustomException(GlobalErrorCode.INVALID_ALERT_LEAD_MINUTES);
     }
     SettingsResponse current = SettingsResponse.from(me);
-    int tempMin = req.tempMin() != null ? req.tempMin() : current.tempMin();
-    int tempMax = req.tempMax() != null ? req.tempMax() : current.tempMax();
-    int humidityMin = req.humidityMin() != null ? req.humidityMin() : current.humidityMin();
-    int humidityMax = req.humidityMax() != null ? req.humidityMax() : current.humidityMax();
+    int tempMin = req.getTempMin() != null ? req.getTempMin() : current.getTempMin();
+    int tempMax = req.getTempMax() != null ? req.getTempMax() : current.getTempMax();
+    int humidityMin = req.getHumidityMin() != null ? req.getHumidityMin() : current.getHumidityMin();
+    int humidityMax = req.getHumidityMax() != null ? req.getHumidityMax() : current.getHumidityMax();
     if (tempMin >= tempMax || humidityMin >= humidityMax) {
       throw new CustomException(GlobalErrorCode.INVALID_RANGE_SETTING);
     }
-    me.updateSettings(req.co2Threshold(), req.tempMin(), req.tempMax(), req.humidityMin(), req.humidityMax(),
-        req.alertEnabled(), req.alertLeadMinutes());
+    me.updateSettings(req.getCo2Threshold(), req.getTempMin(), req.getTempMax(), req.getHumidityMin(), req.getHumidityMax(),
+        req.getAlertEnabled(), req.getAlertLeadMinutes());
     return SettingsResponse.from(me);
   }
 }

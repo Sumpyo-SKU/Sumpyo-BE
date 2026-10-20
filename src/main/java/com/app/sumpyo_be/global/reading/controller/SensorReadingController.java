@@ -10,6 +10,9 @@ import com.app.sumpyo_be.global.reading.entity.SensorReading;
 import com.app.sumpyo_be.global.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.global.room.entity.Room;
 import com.app.sumpyo_be.global.room.repository.RoomRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Tag(name = "SensorReading", description = "센서 측정값 수집 (아두이노)")
 @RequestMapping("/api/rooms/{code}/readings")
 @RequiredArgsConstructor
 public class SensorReadingController {
@@ -38,9 +42,11 @@ public class SensorReadingController {
   private final DeviceProperties deviceProperties;
 
   // TODO: ESP32 가 아직 /api/rooms/517/readings 로 보냄. 펌웨어 교체 전까지 device.aliases 로 517 → bukak-617 매핑
+  @Operation(summary = "측정값 저장 (센서 전용)", description = "ESP32 가 1분마다 보내는 CO2·온습도를 저장합니다. X-Device-Key 헤더가 강의실 키와 맞아야 합니다. 517 은 bukak-617 로 처리합니다.")
   @PostMapping
-  public BaseResponse<Void> save(@PathVariable String code,
-      @RequestHeader("X-Device-Key") String key,
+  public BaseResponse<Void> save(
+      @Parameter(description = "강의실 코드", example = "bukak-617") @PathVariable String code,
+      @Parameter(description = "기기 인증 키") @RequestHeader("X-Device-Key") String key,
       @Valid @RequestBody SensorPayload payload) {
     String roomCode = deviceProperties.resolveCode(code);
     if (!deviceProperties.isValid(roomCode, key)) {
@@ -58,9 +64,13 @@ public class SensorReadingController {
    * 기록 화면용 구간 조회. [from, to) 범위이며 최대 31일까지 조회할 수 있습니다.
    * 예: /range?from=2026-10-14T00:00:00&to=2026-10-15T00:00:00
    */
+  @Operation(summary = "구간 측정값 조회", description = "기록 화면용 원본 측정값. [from, to) 범위, 최대 31일.")
   @GetMapping("/range")
-  public BaseResponse<List<SensorReadingResponse>> range(@PathVariable String code,
+  public BaseResponse<List<SensorReadingResponse>> range(
+      @Parameter(description = "강의실 코드", example = "bukak-617") @PathVariable String code,
+      @Parameter(description = "시작 시각 (KST, 포함)", example = "2026-10-14T00:00:00")
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+      @Parameter(description = "끝 시각 (KST, 미포함)", example = "2026-10-15T00:00:00")
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
     if (!from.isBefore(to) || Duration.between(from, to).compareTo(MAX_RANGE) > 0) {
       throw new CustomException(GlobalErrorCode.INVALID_TIME_RANGE);

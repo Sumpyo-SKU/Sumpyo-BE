@@ -65,7 +65,7 @@ public class BuildingService {
               r.getMapSide(), r.getMapOrder(), c.co2(), c.status(), r.getSensorLevel().isSimulated());
         })
         .toList();
-    long alertCount = mapRooms.stream().filter(r -> AirQualityJudge.isAlert(r.status())).count();
+    long alertCount = mapRooms.stream().filter(r -> AirQualityJudge.isAlert(r.getStatus())).count();
     return new FloorMapResponse(building.getName(), floor, alertCount, mapRooms);
   }
 }

@@ -63,11 +63,11 @@ class BuildingServiceTest {
         thresholdService, Clock.fixed(Instant.parse("2026-10-19T06:00:00Z"), ZoneId.of("Asia/Seoul")));
     FloorMapResponse map = service.getFloorMap(1L, 6);
 
-    assertThat(map.rooms()).extracting(MapRoom::number, MapRoom::simulated)
+    assertThat(map.getRooms()).extracting(MapRoom::getNumber, MapRoom::isSimulated)
         .containsExactly(
             org.assertj.core.groups.Tuple.tuple("607", true),
             org.assertj.core.groups.Tuple.tuple("617", false),
             org.assertj.core.groups.Tuple.tuple("화장실1", false));
-    assertThat(map.alertCount()).isEqualTo(2);
+    assertThat(map.getAlertCount()).isEqualTo(2);
   }
 }
