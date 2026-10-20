@@ -37,6 +37,9 @@ dependencies {
     // Validation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+    // 비밀번호 해시(BCrypt)만 사용. 시큐리티 필터 체인은 아직 없음 (로그인 구현 시 starter-security 로 교체)
+    implementation 'org.springframework.security:spring-security-crypto'
+
     // Actuator (모니터링/헬스체크)
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
@@ -67,8 +70,9 @@ dependencies {
 
     // Test - Testcontainers (CI/로컬에서 Docker로 Postgres/Redis 자동 기동)
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
-    testImplementation 'org.testcontainers:junit-jupiter:1.20.3'
-    testImplementation 'org.testcontainers:postgresql:1.20.3'
+    // Boot 4 는 Testcontainers 2.x 를 관리 (2.x 부터 모듈 이름이 testcontainers-* 로 바뀜)
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
     testImplementation 'com.redis:testcontainers-redis'
 }
 

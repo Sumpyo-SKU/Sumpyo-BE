@@ -7,14 +7,14 @@ import com.app.sumpyo_be.global.reading.dto.ReadingSnapshot;
 public record RoomCondition(ReadingSnapshot reading, RoomStatus status, Integer minutesToExceed) {
 
   public Integer co2() {
-    return reading == null ? null : reading.co2();
+    return reading == null ? null : reading.getCo2();
   }
 
   public Integer temp() {
-    return reading == null ? null : reading.temp();
+    return reading == null ? null : reading.getTemp();
   }
 
   public Integer humidity() {
-    return reading == null ? null : reading.humidity();
+    return reading == null ? null : reading.getHumidity();
   }
 }

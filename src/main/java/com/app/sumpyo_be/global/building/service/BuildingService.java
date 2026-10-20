@@ -43,7 +43,7 @@ public class BuildingService {
   private final Clock clock;
 
   public List<BuildingResponse> getBuildings() {
-    return buildingRepository.findAll(Sort.by("id")).stream().map(BuildingResponse::from).toList();
+    return buildingRepository.findAll(Sort.by("displayOrder")).stream().map(BuildingResponse::from).toList();
   }
 
   /** 쿼리 4번 고정: 건물, 층의 방들, 방별 최신 측정값, 방별 30분 예측 */
@@ -65,7 +65,7 @@ public class BuildingService {
               r.getMapSide(), r.getMapOrder(), c.co2(), c.status(), r.getSensorLevel().isSimulated());
         })
         .toList();
-    long alertCount = mapRooms.stream().filter(r -> AirQualityJudge.isAlert(r.status())).count();
+    long alertCount = mapRooms.stream().filter(r -> AirQualityJudge.isAlert(r.getStatus())).count();
     return new FloorMapResponse(building.getName(), floor, alertCount, mapRooms);
   }
 }

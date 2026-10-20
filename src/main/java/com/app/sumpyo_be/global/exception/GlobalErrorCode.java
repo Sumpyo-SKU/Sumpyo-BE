@@ -20,6 +20,12 @@ public enum GlobalErrorCode implements BaseErrorCode {
     BUILDING_NOT_FOUND("G010", "존재하지 않는 건물입니다.", HttpStatus.NOT_FOUND),
     ACTION_NOT_FOUND("G011", "존재하지 않는 조치입니다.", HttpStatus.NOT_FOUND),
     INVALID_ACTION_STATUS("G012", "현재 상태에서는 처리할 수 없는 조치입니다.", HttpStatus.CONFLICT),
+    LOGIN_REQUIRED("G013", "로그인이 필요합니다.", HttpStatus.UNAUTHORIZED),
+    INVALID_ZONE_FLOOR("G014", "층은 1층부터 건물 최고 층 사이에서 하나 이상 골라야 합니다.", HttpStatus.BAD_REQUEST),
+    DUPLICATED_ZONE("G015", "같은 건물이나 층을 중복해서 보낼 수 없습니다.", HttpStatus.BAD_REQUEST),
+    INVALID_RANGE_SETTING("G016", "최솟값은 최댓값보다 작아야 합니다.", HttpStatus.BAD_REQUEST),
+    INVALID_ALERT_LEAD_MINUTES("G017", "알림 시점은 10·15·20분 중 하나여야 합니다.", HttpStatus.BAD_REQUEST),
+    INVALID_ZONE_FILTER("G018", "zone 은 mine 만 쓸 수 있습니다.", HttpStatus.BAD_REQUEST),
     ;
 
     private final String code;

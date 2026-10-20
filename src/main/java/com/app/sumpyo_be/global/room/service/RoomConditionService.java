@@ -45,18 +45,18 @@ public class RoomConditionService {
       latest = readingRepository.findLatestSince(sensorRoomIds, now.minus(AirQualityJudge.FRESH_WINDOW))
           .stream()
           // 같은 시각 측정이 2건 이상이면 하나만
-          .collect(Collectors.toMap(ReadingSnapshot::roomId, Function.identity(), (a, b) -> a));
+          .collect(Collectors.toMap(ReadingSnapshot::getRoomId, Function.identity(), (a, b) -> a));
       predictions = predictionRepository
           .findLatestPoints(sensorRoomIds, now, now.plus(AirQualityJudge.PREDICTION_HORIZON))
           .stream()
-          .collect(Collectors.groupingBy(PredictionPoint::roomId));
+          .collect(Collectors.groupingBy(PredictionPoint::getRoomId));
     }
 
     Map<Long, RoomCondition> result = new HashMap<>();
     for (Room room : rooms) {
       ReadingSnapshot reading = latest.get(room.getId());
       StatusResult status = AirQualityJudge.status(room.getSensorLevel(),
-          reading == null ? null : reading.co2(), predictions.get(room.getId()), thresholds.co2(), now);
+          reading == null ? null : reading.getCo2(), predictions.get(room.getId()), thresholds.co2(), now);
       result.put(room.getId(), new RoomCondition(reading, status.status(), status.minutesToExceed()));
     }
     return result;

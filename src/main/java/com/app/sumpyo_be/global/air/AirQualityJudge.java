@@ -22,8 +22,8 @@ public final class AirQualityJudge {
   public static final Duration PREDICTION_HORIZON = Duration.ofMinutes(30);
 
   // ---- CO2 수준 (기준 대비 비율) ----
-  static final double CAUTION_RATIO = 0.9;    // 기준의 90% 이상 CAUTION
-  static final double CRITICAL_RATIO = 1.2;   // 기준의 120% 이상 CRITICAL
+  static final int CAUTION_PERCENT = 90;    // 기준의 90% 이상 CAUTION
+  static final int CRITICAL_PERCENT = 120;  // 기준의 120% 이상 CRITICAL
 
   // ---- 온습도 라벨 ----
   /** 적정 범위를 이 값 이내로 벗어나면 "살짝/조금", 더 벗어나면 그냥 "더워요/습해요" 등 */
@@ -73,8 +73,8 @@ public final class AirQualityJudge {
     }
     LocalDateTime horizon = now.plus(PREDICTION_HORIZON);
     return predictions.stream()
-        .filter(p -> p.co2() != null && p.co2() >= co2Threshold)
-        .map(PredictionPoint::targetAt)
+        .filter(p -> p.getCo2() != null && p.getCo2() >= co2Threshold)
+        .map(PredictionPoint::getTargetAt)
         .filter(t -> t.isAfter(now) && !t.isAfter(horizon))
         .min(Comparator.naturalOrder());
   }
@@ -96,14 +96,24 @@ public final class AirQualityJudge {
     };
   }
 
+  /** CAUTION 이 시작되는 CO2 (기준 × 0.9, 올림). 설정 화면 표시와 판정이 같은 값을 쓴다 */
+  public static int cautionFrom(int co2Threshold) {
+    return Math.ceilDiv(co2Threshold * CAUTION_PERCENT, 100);
+  }
+
+  /** CRITICAL 이 시작되는 CO2 (기준 × 1.2, 올림) */
+  public static int criticalFrom(int co2Threshold) {
+    return Math.ceilDiv(co2Threshold * CRITICAL_PERCENT, 100);
+  }
+
   public static Co2Level co2Level(Integer co2, int co2Threshold) {
     if (co2 == null) {
       return null;
     }
-    if (co2 >= co2Threshold * CRITICAL_RATIO) {
+    if (co2 >= criticalFrom(co2Threshold)) {
       return Co2Level.CRITICAL;
     }
-    if (co2 >= co2Threshold * CAUTION_RATIO) {
+    if (co2 >= cautionFrom(co2Threshold)) {
       return Co2Level.CAUTION;
     }
     return Co2Level.NORMAL;

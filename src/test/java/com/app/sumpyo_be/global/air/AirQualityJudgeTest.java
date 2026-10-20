@@ -126,6 +126,20 @@ class AirQualityJudgeTest {
     }
 
     @Test
+    void cautionFrom_criticalFrom은_올림이고_co2Level과_같은_경계() {
+      assertThat(AirQualityJudge.cautionFrom(1000)).isEqualTo(900);
+      assertThat(AirQualityJudge.criticalFrom(1000)).isEqualTo(1200);
+      assertThat(AirQualityJudge.cautionFrom(1005)).isEqualTo(905);    // 904.5 → 905
+      assertThat(AirQualityJudge.criticalFrom(1005)).isEqualTo(1206);  // 1206.0
+      assertThat(AirQualityJudge.cautionFrom(1003)).isEqualTo(903);    // 902.7 → 903
+      for (int t = 600; t <= 1500; t++) {
+        assertThat(AirQualityJudge.co2Level(AirQualityJudge.cautionFrom(t) - 1, t)).isEqualTo(Co2Level.NORMAL);
+        assertThat(AirQualityJudge.co2Level(AirQualityJudge.cautionFrom(t), t)).isEqualTo(Co2Level.CAUTION);
+        assertThat(AirQualityJudge.co2Level(AirQualityJudge.criticalFrom(t), t)).isEqualTo(Co2Level.CRITICAL);
+      }
+    }
+
+    @Test
     void 기준_초과량은_음수면_0() {
       assertThat(AirQualityJudge.co2OverBy(1250, THRESHOLD)).isEqualTo(250);
       assertThat(AirQualityJudge.co2OverBy(700, THRESHOLD)).isZero();
