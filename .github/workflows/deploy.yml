@@ -65,9 +65,14 @@ jobs:
             docker compose -f docker-compose.prod.yml pull app
             docker compose -f docker-compose.prod.yml up -d
             docker image prune -f
-            # 헬스체크 (최대 90초 대기)
-            for i in $(seq 1 30); do
+            # 헬스체크 (최대 180초 대기. EC2 에서 앱 기동에 1분 넘게 걸림)
+            for i in $(seq 1 60); do
               if curl -sf http://localhost:8080/api/health > /dev/null; then
+                # 성공한 태그를 .env 에 기록 → 서버에서 직접 `docker compose up -d` 해도
+                # 예전 :latest 가 아니라 마지막으로 정상 배포된 이미지로 뜬다
+                touch .env
+                sed -i '/^IMAGE_TAG=/d' .env
+                echo "IMAGE_TAG=$IMAGE_TAG" >> .env
                 echo "Deploy OK: $IMAGE_TAG"; exit 0
               fi
               sleep 3
