@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SplittableRandom;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.random.RandomGenerator;
@@ -54,7 +55,9 @@ public class SensorSimulator {
 
   /** 방별 소수 상태. 재시작하면 DB 의 마지막 측정값에서 이어간다 */
   private final Map<Long, State> states = new ConcurrentHashMap<>();
-  private final RandomGenerator random = RandomGenerator.getDefault();
+  // RandomGenerator.getDefault() 는 jdk.random 모듈(L32X64MixRandom)이 필요한데 운영 이미지(temurin 21-jre)에 없다.
+  // SplittableRandom 은 java.base 라 어느 JRE 에서도 동작한다. 스케줄러 한 스레드에서만 써서 동기화 불필요.
+  private final RandomGenerator random = new SplittableRandom();
 
   @Scheduled(cron = "0 * * * * *", zone = "Asia/Seoul")
   @Transactional
