@@ -26,6 +26,12 @@ public enum GlobalErrorCode implements BaseErrorCode {
     INVALID_RANGE_SETTING("G016", "최솟값은 최댓값보다 작아야 합니다.", HttpStatus.BAD_REQUEST),
     INVALID_ALERT_LEAD_MINUTES("G017", "알림 시점은 10·15·20분 중 하나여야 합니다.", HttpStatus.BAD_REQUEST),
     INVALID_ZONE_FILTER("G018", "zone 은 mine 만 쓸 수 있습니다.", HttpStatus.BAD_REQUEST),
+    // 학생 민원(QR) — 학생이 직접 보는 문구라 짧고 부드럽게
+    ROOM_LOOKUP_NOT_FOUND("G019", "호실을 찾을 수 없어요", HttpStatus.NOT_FOUND),
+    INVALID_ROOM_LOOKUP("G020", "건물과 호실을 다시 확인해주세요", HttpStatus.BAD_REQUEST),
+    COMPLAINT_TOO_SOON("G021", "잠시 후 다시 알려주세요", HttpStatus.TOO_MANY_REQUESTS),
+    INVALID_COMPLAINT_CONTENT("G022", "민원 상세는 500자까지 쓸 수 있어요", HttpStatus.BAD_REQUEST),
+    COMPLAINT_UNAVAILABLE("G023", "지금은 민원을 받을 수 없어요. 잠시 후 다시 시도해주세요", HttpStatus.SERVICE_UNAVAILABLE),
     ;
 
     private final String code;

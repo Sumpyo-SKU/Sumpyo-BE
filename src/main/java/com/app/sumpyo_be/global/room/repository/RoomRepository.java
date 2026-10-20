@@ -17,4 +17,11 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
 
   @Query("select r from Room r join fetch r.building where r.id = :id")
   Optional<Room> findWithBuildingById(@Param("id") Long id);
+
+  @Query("select r from Room r join fetch r.building where r.code = :code")
+  Optional<Room> findWithBuildingByCode(@Param("code") String code);
+
+  @Query("select r from Room r join fetch r.building b where b.id = :buildingId and r.number = :number")
+  Optional<Room> findWithBuildingByBuildingIdAndNumber(@Param("buildingId") Long buildingId,
+      @Param("number") String number);
 }
