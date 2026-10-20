@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 담당 구역 설정(온보딩) · 내 설정 (요청/응답 예시: docs/me-api.md) */
+/** 담당 구역 설정(온보딩) · 내 설정 */
 @RestController
 @Tag(name = "Me", description = "내 담당 구역(온보딩) · 내 설정")
 @RequestMapping("/api/me")

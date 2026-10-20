@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 강의실 바텀시트·상세 + 그래프 (요청/응답 예시: docs/campus-api.md) */
+/** 강의실 바텀시트·상세 + 그래프 */
 @RestController
 @Tag(name = "Room", description = "강의실 상세 · 그래프")
 @RequestMapping("/api/rooms/{roomId}")

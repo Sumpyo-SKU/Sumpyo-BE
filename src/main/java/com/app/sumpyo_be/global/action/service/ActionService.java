@@ -8,6 +8,7 @@ import com.app.sumpyo_be.global.action.entity.Action;
 import com.app.sumpyo_be.global.action.entity.ActionStatus;
 import com.app.sumpyo_be.global.action.repository.ActionRepository;
 import com.app.sumpyo_be.global.air.AirQualityJudge;
+import com.app.sumpyo_be.global.air.Thresholds;
 import com.app.sumpyo_be.global.complaint.entity.Complaint;
 import com.app.sumpyo_be.global.complaint.repository.ComplaintRepository;
 import com.app.sumpyo_be.global.exception.CustomException;
@@ -102,10 +103,33 @@ public class ActionService {
       complaintRepository.findById(action.getComplaintId()).ifPresent(Complaint::done);
     }
 
-    // 조치 생성 당시 기준값이 있으면 그것, 없으면 현재 사용자 기준값
-    int threshold = action.getThreshold() != null ? action.getThreshold() : thresholdService.current().co2();
-    boolean goalReached = actualCo2After != null && actualCo2After < threshold;
+    Boolean goalReached = goalReached(actualCo2After, action.getExpectedCo2After(),
+        processorThreshold(action.getMemberId()));
     return new ActionCompleteResponse(action.getCo2Before(), actualCo2After, goalReached, action.getStatus());
+  }
+
+  /**
+   * 목표 달성 여부.
+   * - 완료 시점 CO2 가 없으면(센서 끊김) null
+   * - expected_co2_after 가 있으면(민원 AI 추천 조치) 그 값 이하
+   * - 없으면(예측 조치) 처리자 기준값 미만
+   */
+  static Boolean goalReached(Integer actualCo2After, Integer expectedCo2After, int processorThreshold) {
+    if (actualCo2After == null) {
+      return null;
+    }
+    if (expectedCo2After != null) {
+      return actualCo2After <= expectedCo2After;
+    }
+    return actualCo2After < processorThreshold;
+  }
+
+  /** 처리자(환기 시작한 사람)의 CO2 기준값. 처리자가 없으면(비로그인) 기본 1000 */
+  private int processorThreshold(Long memberId) {
+    if (memberId == null) {
+      return Thresholds.DEFAULT.co2();
+    }
+    return memberRepository.findById(memberId).map(Thresholds::from).orElse(Thresholds.DEFAULT).co2();
   }
 
   private Action findAction(Long actionId) {

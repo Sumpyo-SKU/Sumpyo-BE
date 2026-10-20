@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 조치 목록 · [확인] / [환기 시작] / [완료] (요청/응답 예시: docs/campus-api.md, docs/me-api.md) */
+/** 조치 목록 · [확인] / [환기 시작] / [완료] */
 @RestController
 @Tag(name = "Action", description = "환기 조치 (목록 · 확인 · 시작 · 완료)")
 @RequestMapping("/api/actions")

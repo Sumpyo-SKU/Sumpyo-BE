@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 캠퍼스 현황 탭 (요청/응답 예시: docs/campus-api.md) */
+/** 캠퍼스 현황 탭 */
 @RestController
 @Tag(name = "Building", description = "캠퍼스 현황 (건물·층 평면도)")
 @RequestMapping("/api/buildings")

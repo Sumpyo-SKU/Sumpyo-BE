@@ -3,7 +3,9 @@ package com.app.sumpyo_be.global.member;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -58,6 +60,7 @@ class MeApiIntegrationTest {
         {"co2Threshold":1000,"tempMin":20,"tempMax":26,"humidityMin":40,"humidityMax":60,
          "alertEnabled":true,"alertLeadMinutes":15}""").andExpect(status().isOk());
     jdbc.update("delete from action");
+    jdbc.update("delete from sensor_reading");
   }
 
   private ResultActions putJson(String url, String body) throws Exception {
@@ -281,6 +284,73 @@ class MeApiIntegrationTest {
       mvc.perform(get("/api/actions").param("status", "DONE")).andExpect(jsonPath("$.data", hasSize(0)));
       mvc.perform(get("/api/actions").param("status", "PENDING,CHECKED")).andExpect(jsonPath("$.data", hasSize(1)));
       mvc.perform(get("/api/actions").param("zone", "all")).andExpect(status().isBadRequest());
+    }
+  }
+
+  /** POST /api/actions/{id}/complete 의 goalReached 기준 */
+  @Nested
+  class CompleteGoalReached {
+
+    /** worker01 이 환기를 시작해 둔(IN_PROGRESS) 조치. expectedCo2After 가 null 이면 예측 조치 */
+    private long inProgressAction(String roomCode, String source, Integer expectedCo2After) {
+      LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+      return jdbc.queryForObject("""
+          insert into action (room_id, source, recommend, status, co2_before, expected_co2_after,
+                              member_id, window_opened_at, created_at)
+          values ((select id from room where code = ?), ?, 'OPEN', 'IN_PROGRESS', 1250, ?,
+                  (select id from member where login_id = 'worker01'), ?, ?)
+          returning id""", Long.class, roomCode, source, expectedCo2After, now.minusMinutes(10), now);
+    }
+
+    /** 최근 10분 안의 측정값 = 완료 시점 CO2 */
+    private void reading(String roomCode, int co2) {
+      jdbc.update("""
+          insert into sensor_reading (room_id, co2, temp, humidity, measured_at)
+          values ((select id from room where code = ?), ?, 24, 45, ?)""",
+          roomCode, co2, LocalDateTime.now(ZoneId.of("Asia/Seoul")).minusMinutes(1));
+    }
+
+    private ResultActions complete(long actionId) throws Exception {
+      return mvc.perform(post("/api/actions/{id}/complete", actionId)).andExpect(status().isOk());
+    }
+
+    @Test
+    void 민원_AI_추천_조치는_실제_CO2가_예상_CO2_이하면_달성() throws Exception {
+      // 기준값(1000) 미만이어도 예상값보다 높으면 미달성 → 예상값 기준임을 확인
+      long equal = inProgressAction("bukak-617", "COMPLAINT", 780);
+      long above = inProgressAction("bukak-618", "COMPLAINT", 700);
+      reading("bukak-617", 780);
+      reading("bukak-618", 780);
+
+      complete(equal)
+          .andExpect(jsonPath("$.data.co2Before").value(1250))
+          .andExpect(jsonPath("$.data.actualCo2After").value(780))
+          .andExpect(jsonPath("$.data.goalReached").value(true))
+          .andExpect(jsonPath("$.data.status").value("DONE"));
+      complete(above).andExpect(jsonPath("$.data.goalReached").value(false));
+    }
+
+    @Test
+    void 예측_조치는_실제_CO2가_처리자_기준값_미만이면_달성() throws Exception {
+      // 처리자(worker01) 기준값을 800 으로 → 기본 1000 이 아니라 처리자 기준값을 쓰는지 확인
+      putJson("/api/me/settings", "{\"co2Threshold\":800}").andExpect(status().isOk());
+      long below = inProgressAction("bukak-617", "PREDICTION", null);
+      long over = inProgressAction("bukak-618", "PREDICTION", null);
+      reading("bukak-617", 799);
+      reading("bukak-618", 800);
+
+      complete(below).andExpect(jsonPath("$.data.goalReached").value(true));
+      complete(over).andExpect(jsonPath("$.data.goalReached").value(false));
+    }
+
+    @Test
+    void 센서가_끊겨_실제_CO2가_없으면_goalReached는_null() throws Exception {
+      long id = inProgressAction("bukak-617", "PREDICTION", null);
+
+      complete(id)
+          .andExpect(jsonPath("$.data.actualCo2After").value(nullValue()))
+          .andExpect(jsonPath("$.data.goalReached").value(nullValue()))
+          .andExpect(jsonPath("$.data.status").value("DONE"));
     }
   }
 }
