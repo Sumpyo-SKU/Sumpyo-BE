@@ -36,6 +36,17 @@ public final class AirQualityJudge {
   //   온도점수: 적정 범위 안 100점, 벗어난 1℃ 당 10점 감점 (최저 0점)
   //   습도점수: 적정 범위 안 100점, 벗어난 1%p 당 3점 감점 (최저 0점)
   // 값이 없는 항목(센서 실패)은 빼고 남은 가중치로 다시 나눈다. 셋 다 없으면 null.
+  /** Swagger comfortScore 설명 (LatestReadingResponse, RoomResponse 공용). 위 계산식과 같이 고칠 것 */
+  public static final String COMFORT_SCORE_DESCRIPTION = "쾌적도 점수 (0~100). "
+      + "CO2점수×0.60 + 온도점수×0.25 + 습도점수×0.15, 반올림. "
+      + "CO2점수: 600ppm 이하 100점 ~ 1600ppm 이상 0점 (100ppm 당 10점). "
+      + "온도점수: 적정 범위(기본 20~26℃) 안 100점, 벗어난 1℃ 당 10점 감점. "
+      + "습도점수: 적정 범위(기본 40~60%) 안 100점, 벗어난 1%p 당 3점 감점. "
+      + "적정 범위는 로그인 사용자 설정, 비로그인이면 기본값. "
+      + "값이 없는 항목은 빼고 남은 가중치로 계산, 셋 다 없으면 null. "
+      + "근거: CO2 기준 1000ppm 은 실내공기질관리법 다중이용시설 유지기준, 온습도 범위는 일반적인 실내 쾌적 범위, "
+      + "가중치는 환기(창문 열기)로 바로 바꿀 수 있는 CO2 중심으로 자체 설정";
+
   static final double CO2_WEIGHT = 0.60;
   static final double TEMP_WEIGHT = 0.25;
   static final double HUMIDITY_WEIGHT = 0.15;

@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.room.dto;
 
+import com.app.sumpyo_be.domain.air.AirQualityJudge;
 import com.app.sumpyo_be.domain.air.Co2Level;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
@@ -32,7 +33,7 @@ public class LatestReadingResponse {
   @Schema(description = "습도 (%)", example = "45")
   private Integer humidity;
 
-  @Schema(description = "쾌적도 점수 (0~100)", example = "72")
+  @Schema(description = AirQualityJudge.COMFORT_SCORE_DESCRIPTION, example = "74")
   private Integer comfortScore;
 
   @Schema(description = "CO2 수준 (NORMAL: 정상, CAUTION: 주의 = 기준×0.9 이상, CRITICAL: 위험 = 기준×1.2 이상)",

@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.room.dto;
 
+import com.app.sumpyo_be.domain.air.AirQualityJudge;
 import com.app.sumpyo_be.domain.air.Co2Level;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -39,7 +40,7 @@ public class RoomResponse {
   @Schema(description = "현재 습도 (%)", example = "45")
   private Integer humidity;
 
-  @Schema(description = "쾌적도 점수 (0~100)", example = "72")
+  @Schema(description = AirQualityJudge.COMFORT_SCORE_DESCRIPTION, example = "74")
   private Integer comfortScore;
 
   @Schema(description = "CO2 수준 (NORMAL: 정상, CAUTION: 주의, CRITICAL: 위험)", example = "CAUTION")
