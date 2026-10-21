@@ -1,8 +1,13 @@
 package com.app.sumpyo_be.global.member.service;
 
+import com.app.sumpyo_be.global.building.repository.BuildingRepository;
 import com.app.sumpyo_be.global.member.entity.Member;
+import com.app.sumpyo_be.global.member.entity.MemberZone;
 import com.app.sumpyo_be.global.member.entity.Role;
 import com.app.sumpyo_be.global.member.repository.MemberRepository;
+import com.app.sumpyo_be.global.member.repository.MemberZoneRepository;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,9 +28,19 @@ import org.springframework.transaction.annotation.Transactional;
 public class DemoMemberInitializer implements ApplicationRunner {
 
   public static final String DEMO_LOGIN_ID = "worker01";
-  private static final String DEMO_NAME = "김근로";
+
+  /** 데모 계정 (loginId → 이름, 처음 만들 때의 담당 구역). 담당 구역은 계정을 만들 때만 넣는다 */
+  record DemoAccount(String name, String zoneBuilding, Integer zoneFloor) {}
+
+  static final Map<String, DemoAccount> DEMO_ACCOUNTS = new LinkedHashMap<>();
+  static {
+    DEMO_ACCOUNTS.put(DEMO_LOGIN_ID, new DemoAccount("김근로", null, null));
+    DEMO_ACCOUNTS.put("worker02", new DemoAccount("이근로", "북악관", 6));
+  }
 
   private final MemberRepository memberRepository;
+  private final MemberZoneRepository zoneRepository;
+  private final BuildingRepository buildingRepository;
   private final PasswordEncoder passwordEncoder;
 
   @Value("${sumpyo.demo.password:}")
@@ -34,14 +49,23 @@ public class DemoMemberInitializer implements ApplicationRunner {
   @Override
   @Transactional
   public void run(ApplicationArguments args) {
-    if (memberRepository.existsByLoginId(DEMO_LOGIN_ID)) {
+    DEMO_ACCOUNTS.forEach(this::createIfAbsent);
+  }
+
+  private void createIfAbsent(String loginId, DemoAccount account) {
+    if (memberRepository.existsByLoginId(loginId)) {
       return;
     }
     if (demoPassword == null || demoPassword.isBlank()) {
-      log.warn("DEMO_PASSWORD 가 없어 데모 계정({})을 만들지 않았습니다. /api/me/* 는 401 을 돌려줍니다.", DEMO_LOGIN_ID);
+      log.warn("DEMO_PASSWORD 가 없어 데모 계정({})을 만들지 않았습니다. /api/me/* 는 401 을 돌려줍니다.", loginId);
       return;
     }
-    memberRepository.save(Member.create(DEMO_LOGIN_ID, passwordEncoder.encode(demoPassword), DEMO_NAME, Role.WORKER));
-    log.info("데모 근로생 계정({})을 만들었습니다.", DEMO_LOGIN_ID);
+    Member member = memberRepository.save(
+        Member.create(loginId, passwordEncoder.encode(demoPassword), account.name(), Role.WORKER));
+    if (account.zoneBuilding() != null) {
+      buildingRepository.findByName(account.zoneBuilding()).filter(b -> b.hasFloor(account.zoneFloor()))
+          .ifPresent(b -> zoneRepository.save(MemberZone.of(member.getId(), b, account.zoneFloor())));
+    }
+    log.info("데모 근로생 계정({})을 만들었습니다.", loginId);
   }
 }

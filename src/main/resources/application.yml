@@ -38,9 +38,16 @@ sumpyo:
   demo:
     # 로그인 전 임시 데모 근로생(worker01) 비밀번호. 비어 있으면 계정을 만들지 않음
     password: ${DEMO_PASSWORD:}
+    # 데모 모드: X-Demo-Login 헤더로 데모 계정(worker01, worker02) 전환. 로그인을 붙이면 끌 것
+    header-login: ${DEMO_HEADER_LOGIN:false}
   complaint:
     # 학생 민원 client_hash = SHA-256(clientId + salt). 비어 있으면 민원 접수만 503
     salt: ${COMPLAINT_SALT:}
+  llm:
+    # 캠퍼스톡 추천 답변. 셋 다 있을 때만 LLM 사용 (gemini | openai | anthropic), 아니면 규칙 기반
+    provider: ${LLM_PROVIDER:}
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:}
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
