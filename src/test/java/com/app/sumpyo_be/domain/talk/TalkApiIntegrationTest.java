@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.talk;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
@@ -449,11 +450,13 @@ class TalkApiIntegrationTest {
     }
 
     @Test
-    void 추천은_처음_열_때_한_번만_만들고_이후_재사용() throws Exception {
+    void 규칙_기반은_저장하지_않고_저장된_추천이_있으면_그것을_쓴다() throws Exception {
       long talkId = send(W1, 6, r617, "지금 수업 중인가요?");
       as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.suggestions", hasSize(2)));
+      // 규칙 기반은 저장하지 않는다 (늦게 온 LLM 결과가 저장될 자리)
+      assertThat(jdbc.queryForObject("select suggestions from talk_post where id = ?", String.class, talkId)).isNull();
 
-      // 저장된 값을 바꿔 두면 다시 열어도 새로 만들지 않고 저장된 값을 쓴다
+      // (LLM 이) 저장해 두면 다시 열 때 새로 만들지 않고 저장된 값을 쓴다
       schedule617("02:30", "03:45");
       jdbc.update("update talk_post set suggestions = '[\"저장된 추천\"]' where id = ?", talkId);
       as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.suggestions", contains("저장된 추천")));

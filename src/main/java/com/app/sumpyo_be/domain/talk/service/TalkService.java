@@ -32,6 +32,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -106,13 +108,21 @@ public class TalkService {
     TalkPost post = TalkPost.create(me.getId(), building, req.getFloor(), room, content(req.getContent()),
         LocalDateTime.now(clock));
     postRepository.save(post);
-    return new TalkCreateResponse(post.getId());
+    Long postId = post.getId();
+    // 추천 답변은 LLM 이 느려서 미리 만든다. 커밋 전에 시작하면 백그라운드에서 글을 못 찾는다
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+      @Override
+      public void afterCommit() {
+        suggestionService.prepare(postId);
+      }
+    });
+    return new TalkCreateResponse(postId);
   }
 
   /**
-   * 상세. 보낸 사람이 아닌 근로생이 열면 UNREAD → CHECKING, 추천 답변이 없으면 이때 한 번 만든다.
-   * 추천(LLM 이면 최대 3초)을 만드는 동안 DB 트랜잭션을 잡지 않으려고 메서드 전체 트랜잭션은 두지 않는다.
-   * 상태·추천 저장은 조건부 UPDATE 라 동시에 열어도 한 번만 바뀐다.
+   * 상세. 보낸 사람이 아닌 근로생이 열면 UNREAD → CHECKING. 추천 답변은 작성 때 미리 만든 것을 쓰고,
+   * 아직 없으면 LLM 을 최대 3초 기다린 뒤 규칙 기반으로 보여준다 (TalkSuggestionService).
+   * 그동안 DB 트랜잭션을 잡지 않으려고 메서드 전체 트랜잭션은 두지 않는다. 상태 변경은 조건부 UPDATE 라 한 번만 바뀐다.
    */
   public TalkDetailResponse detail(Long talkId) {
     Member me = memberAccess.require(Role.WORKER);
@@ -122,11 +132,12 @@ public class TalkService {
       if (post.getStatus() == TalkStatus.UNREAD) {
         postRepository.changeStatus(talkId, TalkStatus.UNREAD, TalkStatus.CHECKING);
       }
-      if (post.getSuggestions() == null) {
-        postRepository.saveSuggestionsIfAbsent(talkId, jsonMapper.writeValueAsString(suggestionService.suggest(post)));
-      }
       post = findPost(talkId);
     }
+    List<String> suggestions = sentByMe ? List.of()
+        : post.getSuggestions() != null
+            ? jsonMapper.readValue(post.getSuggestions(), new TypeReference<List<String>>() {})
+            : suggestionService.suggestNow(post);
 
     List<TalkDetailResponse.Reply> replies = replyRepository.findWithMemberByPostId(talkId).stream()
         .map(r -> new TalkDetailResponse.Reply(r.getId(), r.getContent(), r.getMember().getName(),
@@ -140,8 +151,7 @@ public class TalkService {
         .status(post.getStatus())
         .sentByMe(sentByMe)
         .createdAt(post.getCreatedAt())
-        .suggestions(sentByMe || post.getSuggestions() == null ? List.of()
-            : jsonMapper.readValue(post.getSuggestions(), new TypeReference<List<String>>() {}))
+        .suggestions(suggestions)
         .replies(replies)
         .build();
   }

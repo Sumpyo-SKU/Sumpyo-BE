@@ -58,7 +58,8 @@ public class TalkController {
 
   @Operation(summary = "캠퍼스톡 상세",
       description = "권한 W. 내 건물 글만 (아니면 403). 보낸 사람이 아닌 근로생이 처음 열면 UNREAD → CHECKING, "
-          + "추천 답변도 이때 한 번 만들어 저장하고 이후 재사용. 보낸 사람에겐 suggestions 가 빈 배열.")
+          + "추천 답변은 글 작성 직후 LLM 으로 미리 만들어 저장. 아직 없으면 최대 3초 기다린 뒤 규칙 기반 답변을 주고 "
+          + "(LLM 결과가 늦게 오면 다음에 열 때 보임). 보낸 사람에겐 suggestions 가 빈 배열.")
   @GetMapping("/{talkId}")
   public BaseResponse<TalkDetailResponse> detail(
       @Parameter(description = "캠퍼스톡 ID", example = "5") @PathVariable Long talkId) {

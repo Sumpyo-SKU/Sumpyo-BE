@@ -18,8 +18,8 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
 @Configuration
 public class AiConfig {
 
-  /** LLM HTTP 연결·읽기 제한 */
-  public static final Duration TIMEOUT = Duration.ofSeconds(3);
+  /** LLM HTTP 연결·읽기 제한. 무료 티어는 응답이 3~17초로 들쭉날쭉해서 넉넉히 둔다 (사용자를 기다리게 할지는 쓰는 쪽에서 정함) */
+  public static final Duration TIMEOUT = Duration.ofSeconds(20);
 
   static final String PROVIDER = "sumpyo.llm.provider";
   static final String API_KEY = "sumpyo.llm.api-key";

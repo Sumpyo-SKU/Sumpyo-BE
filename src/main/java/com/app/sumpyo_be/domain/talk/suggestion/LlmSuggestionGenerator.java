@@ -1,68 +1,60 @@
 package com.app.sumpyo_be.domain.talk.suggestion;
 
 import com.app.sumpyo_be.global.ai.LlmClient;
-import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * LLM 추천 답변. 전체 3초 안에 "JSON 문자열 배열" 이 오지 않으면 규칙 기반으로 대체한다.
+ * LLM 추천 답변. "JSON 문자열 배열" 이 오지 않거나 호출이 실패하면 empty (규칙 기반 대체·대기 시간은 TalkSuggestionService).
  * 실패 로그에는 예외 종류만 남긴다 (프롬프트·키·응답 원문은 남기지 않음).
  */
 @Slf4j
-public class LlmSuggestionGenerator implements SuggestionGenerator {
+public class LlmSuggestionGenerator {
 
   static final int MAX_LENGTH = 300;   // 답변 최대 길이와 같다
   private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
   private final LlmClient client;
-  private final SuggestionGenerator fallback;
   private final JsonMapper jsonMapper;
-  private final Duration timeout;
-  private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-  public LlmSuggestionGenerator(LlmClient client, SuggestionGenerator fallback, JsonMapper jsonMapper,
-      Duration timeout) {
+  public LlmSuggestionGenerator(LlmClient client, JsonMapper jsonMapper) {
     this.client = client;
-    this.fallback = fallback;
     this.jsonMapper = jsonMapper;
-    this.timeout = timeout;
   }
 
-  @Override
-  public List<String> generate(SuggestionContext ctx) {
+  /** 응답이 올 때까지 기다린다 (HTTP 타임아웃은 AiConfig.TIMEOUT) */
+  public Optional<List<String>> generate(SuggestionContext ctx) {
     try {
-      String text = CompletableFuture.supplyAsync(() -> client.complete(prompt(ctx)), executor)
-          .get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-      Optional<List<String>> parsed = parse(text);
-      if (parsed.isPresent()) {
-        return parsed.get();
+      Optional<List<String>> parsed = parse(client.complete(prompt(ctx)));
+      if (parsed.isEmpty()) {
+        log.warn("LLM 추천 답변 형식이 올바르지 않습니다.");
       }
-      log.warn("LLM 추천 답변 형식이 올바르지 않아 규칙 기반으로 대체합니다.");
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      log.warn("LLM 추천 답변 중단, 규칙 기반으로 대체합니다.");
-    } catch (Exception e) {
-      Throwable cause = e.getCause() != null ? e.getCause() : e;
-      log.warn("LLM 추천 답변 실패({}), 규칙 기반으로 대체합니다.", cause.getClass().getSimpleName());
+      return parsed;
+    } catch (RuntimeException e) {
+      log.warn("LLM 추천 답변 실패({})", e.getClass().getSimpleName());
+      return Optional.empty();
     }
-    return fallback.generate(ctx);
   }
 
-  /** 본문 + 시간표·센서값. 답변은 JSON 배열로만 */
+  /**
+   * 본문 + 시간표·센서값. 답변 3개는 의도가 겹치지 않게(바로 가기 / 상황 알려주기 / 지금은 어려움·되묻기).
+   * 예시 문장을 그대로 넣으면 그 문장을 베끼므로 유형만 알려준다. 답변은 JSON 배열로만
+   */
   static String prompt(SuggestionContext ctx) {
     StringBuilder sb = new StringBuilder();
-    sb.append("대학 강의실 환기를 맡은 근로생끼리 쓰는 메신저야. 아래 메시지를 받은 근로생이 바로 보낼 ")
-        .append("한국어 짧은 답변 3개를 JSON 문자열 배열로만 답해. 다른 말은 쓰지 마.\n\n");
+    sb.append("대학 강의실 환기를 맡은 근로생끼리 쓰는 메신저야. 아래 메시지를 받은 근로생이 버튼 한 번으로 바로 보낼 ")
+        .append("답변 3개를 만들어줘.\n")
+        .append("- 3개는 서로 다른 의도로: ① 바로 하겠다·가겠다 ② 아래 정보로 지금 상황 알려주기 ")
+        .append("③ 지금은 어렵다(다른 곳에 있음, 몇 분 뒤 가능 등) 또는 필요한 걸 되묻기\n")
+        .append("- 메시지 내용에 맞춰 구체적으로 (강의실 호수, 수업 끝나는 시각, CO2 등을 활용). 같은 표현 반복 금지\n")
+        .append("- 아래에 없는 강의실 호수·수업·CO2 수치는 절대 지어내지 마. 정보가 없으면 ②는 메시지에 맞는 내 상황으로\n")
+        .append("- 동료끼리 쓰는 짧고 자연스러운 존댓말, 각 30자 이내\n")
+        .append("- JSON 문자열 배열로만 답해. 다른 말은 쓰지 마.\n\n");
     sb.append("메시지: ").append(ctx.content()).append('\n');
     sb.append("보낸 곳: ").append(ctx.building()).append(' ').append(ctx.floor()).append("층\n");
     if (ctx.hasRoom()) {
@@ -99,7 +91,7 @@ public class LlmSuggestionGenerator implements SuggestionGenerator {
         return Optional.empty();
       }
       String trimmed = s.strip();
-      if (!trimmed.isEmpty() && trimmed.length() <= MAX_LENGTH && result.size() < MAX_SUGGESTIONS) {
+      if (!trimmed.isEmpty() && trimmed.length() <= MAX_LENGTH && result.size() < SuggestionGenerator.MAX_SUGGESTIONS) {
         result.add(trimmed);
       }
     }

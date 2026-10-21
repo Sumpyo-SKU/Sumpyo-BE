@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.app.sumpyo_be.global.ai.LlmClient;
-import java.time.Duration;
 import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.Nested;
@@ -47,39 +46,27 @@ class SuggestionGeneratorTest {
   class Llm {
 
     private final LlmClient client = mock(LlmClient.class);
-    private final LlmSuggestionGenerator llm =
-        new LlmSuggestionGenerator(client, RULE, JsonMapper.builder().build(), Duration.ofMillis(300));
+    private final LlmSuggestionGenerator llm = new LlmSuggestionGenerator(client, JsonMapper.builder().build());
     private final SuggestionContext ctx = ctx("지금 수업 중인가요?", "617", true, 1050);
 
     @Test
     void JSON_문자열_배열이면_그대로_최대_3개_코드블록도_허용() {
       when(client.complete(anyString())).thenReturn("```json\n[\"네 수업 중이에요\", \"14:45에 끝나요\", \" \", \"창문 열었어요\", \"하나 더\"]\n```");
-      assertThat(llm.generate(ctx)).containsExactly("네 수업 중이에요", "14:45에 끝나요", "창문 열었어요");
+      assertThat(llm.generate(ctx)).contains(List.of("네 수업 중이에요", "14:45에 끝나요", "창문 열었어요"));
     }
 
     @Test
-    void 호출이_실패하면_규칙_기반() {
+    void 호출이_실패하면_empty() {
       when(client.complete(anyString())).thenThrow(new IllegalStateException("401"));
-      assertThat(llm.generate(ctx)).isEqualTo(RULE.generate(ctx));
+      assertThat(llm.generate(ctx)).isEmpty();
     }
 
     @Test
-    void JSON_문자열_배열이_아니면_규칙_기반() {
+    void JSON_문자열_배열이_아니면_empty() {
       for (String bad : List.of("그냥 문장", "[1, 2, 3]", "{\"a\": \"b\"}", "[\"ok\", 3]", "[]", "[ 깨진 json")) {
         when(client.complete(anyString())).thenReturn(bad);
-        assertThat(llm.generate(ctx)).as(bad).isEqualTo(RULE.generate(ctx));
+        assertThat(llm.generate(ctx)).as(bad).isEmpty();
       }
-    }
-
-    @Test
-    void 타임아웃이면_규칙_기반() {
-      when(client.complete(anyString())).thenAnswer(inv -> {
-        Thread.sleep(2_000);
-        return "[\"늦은 답\"]";
-      });
-      long start = System.nanoTime();
-      assertThat(llm.generate(ctx)).isEqualTo(RULE.generate(ctx));
-      assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(1));
     }
 
     @Test
