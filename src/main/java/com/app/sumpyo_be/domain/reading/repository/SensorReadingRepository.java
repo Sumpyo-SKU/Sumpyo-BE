@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.reading.repository;
 
+import com.app.sumpyo_be.domain.reading.dto.LastMeasured;
 import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.entity.SensorReading;
 import com.app.sumpyo_be.domain.room.entity.Room;
@@ -32,4 +33,17 @@ public interface SensorReadingRepository extends JpaRepository<SensorReading, Lo
       """)
   List<ReadingSnapshot> findLatestSince(@Param("roomIds") Collection<Long> roomIds,
       @Param("since") LocalDateTime since);
+
+  /** 방마다 마지막 측정 시각 (기간 제한 없음). 측정이 한 번도 없는 방은 결과에 없다 */
+  @Query("""
+      select new com.app.sumpyo_be.domain.reading.dto.LastMeasured(r.room.id, max(r.measuredAt))
+      from SensorReading r
+      where r.room.id in :roomIds
+      group by r.room.id
+      """)
+  List<LastMeasured> findLastMeasuredAt(@Param("roomIds") Collection<Long> roomIds);
+
+  /** CO2 가 기준 미만이었던 마지막 측정 시각. 한 번도 없으면 null */
+  @Query("select max(r.measuredAt) from SensorReading r where r.room.id = :roomId and r.co2 < :threshold")
+  LocalDateTime findLastBelow(@Param("roomId") Long roomId, @Param("threshold") int threshold);
 }

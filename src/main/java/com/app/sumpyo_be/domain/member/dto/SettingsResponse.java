@@ -17,8 +17,6 @@ import lombok.NoArgsConstructor;
 @Schema(description = "내 설정 (알림 기준값)")
 public class SettingsResponse {
 
-  static final int DEFAULT_ALERT_LEAD_MINUTES = 15;
-
   @Schema(description = "CO2 기준값 (ppm)", example = "1000")
   private int co2Threshold;
 
@@ -40,11 +38,20 @@ public class SettingsResponse {
   @Schema(description = "적정 습도 최댓값 (%)", example = "60")
   private int humidityMax;
 
-  @Schema(description = "환기 알림 사용 여부", example = "true")
+  @Schema(description = "예측되면 미리 알림 (VENTILATION_SOON). notifyVentilation 이 꺼져 있으면 효과 없음", example = "true")
   private boolean alertEnabled;
 
   @Schema(description = "기준 초과 몇 분 전에 알릴지 (10·15·20)", example = "15")
   private int alertLeadMinutes;
+
+  @Schema(description = "환기 알림 받기 (지금 환기·곧 환기). 끄면 alertEnabled 와 상관없이 환기 알림 없음", example = "true")
+  private boolean notifyVentilation;
+
+  @Schema(description = "민원 알림 받기 (새 민원·반복 민원)", example = "true")
+  private boolean notifyComplaint;
+
+  @Schema(description = "센서 연결 끊김 알림 받기", example = "true")
+  private boolean notifySensorError;
 
   public static SettingsResponse from(Member m) {
     Thresholds t = Thresholds.from(m);
@@ -56,8 +63,11 @@ public class SettingsResponse {
         .tempMax(t.tempMax())
         .humidityMin(t.humidityMin())
         .humidityMax(t.humidityMax())
-        .alertEnabled(m.getAlertEnabled() == null || m.getAlertEnabled())
-        .alertLeadMinutes(m.getAlertLeadMinutes() != null ? m.getAlertLeadMinutes() : DEFAULT_ALERT_LEAD_MINUTES)
+        .alertEnabled(m.isAlertOn())
+        .alertLeadMinutes(m.alertLeadMinutesOrDefault())
+        .notifyVentilation(m.isNotifyVentilation())
+        .notifyComplaint(m.isNotifyComplaint())
+        .notifySensorError(m.isNotifySensorError())
         .build();
   }
 }

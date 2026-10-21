@@ -48,7 +48,9 @@ public class MeController {
   }
 
   /** 권한 W, A. 보낸 값만 바뀜 */
-  @Operation(summary = "내 설정 변경", description = "권한 W, A. 보낸 값만 바뀝니다. co2Threshold 600~1500, alertLeadMinutes 10·15·20, 최솟값 < 최댓값.")
+  @Operation(summary = "내 설정 변경", description = "권한 W, A. 보낸 값만 바뀝니다. co2Threshold 600~1500, alertLeadMinutes 10·15·20, 최솟값 < 최댓값. "
+      + "알림 종류별 on/off: notifyVentilation(끄면 alertEnabled 와 상관없이 환기 알림 없음), notifyComplaint, notifySensorError. "
+      + "기본값 되돌리기는 기본값을 그대로 PUT.")
   @PutMapping("/settings")
   public BaseResponse<SettingsResponse> updateSettings(@Valid @RequestBody SettingsUpdateRequest request) {
     return BaseResponse.success("설정을 저장했습니다.", meService.updateSettings(request));

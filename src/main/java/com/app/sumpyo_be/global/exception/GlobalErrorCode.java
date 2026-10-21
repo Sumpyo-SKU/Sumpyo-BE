@@ -41,6 +41,11 @@ public enum GlobalErrorCode implements BaseErrorCode {
     TALK_NOT_FOUND("G029", "존재하지 않는 캠퍼스톡입니다.", HttpStatus.NOT_FOUND),
     TALK_ACCESS_DENIED("G030", "내 건물의 캠퍼스톡만 볼 수 있습니다.", HttpStatus.FORBIDDEN),
     TALK_SELF_REPLY_DENIED("G031", "내가 보낸 캠퍼스톡에는 답할 수 없습니다.", HttpStatus.FORBIDDEN),
+    // 민원 QR
+    QR_NOT_LECTURE("G032", "강의실만 민원 QR 을 발급할 수 있습니다.", HttpStatus.BAD_REQUEST),
+    // 알림함
+    NOTIFICATION_NOT_FOUND("G033", "존재하지 않는 알림입니다.", HttpStatus.NOT_FOUND),
+    NOTIFICATION_ACCESS_DENIED("G034", "내 알림만 읽음 처리할 수 있습니다.", HttpStatus.FORBIDDEN),
     ;
 
     private final String code;

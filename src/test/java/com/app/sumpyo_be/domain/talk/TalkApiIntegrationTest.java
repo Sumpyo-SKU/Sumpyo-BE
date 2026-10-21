@@ -43,6 +43,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  */
 @SpringBootTest(properties = {
     "sumpyo.simulator.enabled=false",
+    "sumpyo.notification.scan-enabled=false",
     "sumpyo.demo.password=test-demo-password",
     "sumpyo.demo.header-login=true",
     // 로컬 .env 에 LLM 키가 있어도 테스트는 외부 API 를 부르지 않고 규칙 기반으로만

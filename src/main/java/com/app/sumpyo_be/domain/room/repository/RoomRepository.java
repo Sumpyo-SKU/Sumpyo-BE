@@ -2,6 +2,7 @@ package com.app.sumpyo_be.domain.room.repository;
 
 import com.app.sumpyo_be.domain.room.entity.Room;
 import com.app.sumpyo_be.domain.room.entity.SensorLevel;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +15,9 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
   List<Room> findByBuildingIdAndFloor(Long buildingId, Integer floor);
 
   List<Room> findBySensorLevel(SensorLevel sensorLevel);
+
+  @Query("select r from Room r join fetch r.building where r.sensorLevel in :levels")
+  List<Room> findWithBuildingBySensorLevelIn(@Param("levels") Collection<SensorLevel> levels);
 
   @Query("select r from Room r join fetch r.building where r.id = :id")
   Optional<Room> findWithBuildingById(@Param("id") Long id);

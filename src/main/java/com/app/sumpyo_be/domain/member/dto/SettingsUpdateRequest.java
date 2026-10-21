@@ -36,9 +36,18 @@ public class SettingsUpdateRequest {
   @Schema(description = "적정 습도 최댓값 (%)", example = "60")
   private Integer humidityMax;
 
-  @Schema(description = "환기 알림 사용 여부", example = "true")
+  @Schema(description = "예측되면 미리 알림 (VENTILATION_SOON)", example = "true")
   private Boolean alertEnabled;
 
   @Schema(description = "기준 초과 몇 분 전에 알릴지 (10·15·20 중 하나)", example = "20")
   private Integer alertLeadMinutes;
+
+  @Schema(description = "환기 알림 받기 (지금 환기·곧 환기)", example = "true")
+  private Boolean notifyVentilation;
+
+  @Schema(description = "민원 알림 받기 (새 민원·반복 민원)", example = "true")
+  private Boolean notifyComplaint;
+
+  @Schema(description = "센서 연결 끊김 알림 받기", example = "false")
+  private Boolean notifySensorError;
 }

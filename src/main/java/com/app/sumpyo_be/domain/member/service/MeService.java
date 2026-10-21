@@ -32,7 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class MeService {
 
-  static final Set<Integer> ALERT_LEAD_MINUTES = Set.of(10, 15, 20);
+  /** 예측 알림 시점 선택지 (분) */
+  public static final Set<Integer> ALERT_LEAD_MINUTES = Set.of(10, 15, 20);
 
   private final MemberAccess memberAccess;
   private final MemberZoneRepository zoneRepository;
@@ -119,6 +120,7 @@ public class MeService {
     }
     me.updateSettings(req.getCo2Threshold(), req.getTempMin(), req.getTempMax(), req.getHumidityMin(), req.getHumidityMax(),
         req.getAlertEnabled(), req.getAlertLeadMinutes());
+    me.updateNotify(req.getNotifyVentilation(), req.getNotifyComplaint(), req.getNotifySensorError());
     return SettingsResponse.from(me);
   }
 }

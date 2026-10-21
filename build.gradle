@@ -31,6 +31,10 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
 
+    // QR 코드 (민원 QR PNG 생성)
+    implementation 'com.google.zxing:core:3.5.3'
+    implementation 'com.google.zxing:javase:3.5.3'
+
     // Validation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 

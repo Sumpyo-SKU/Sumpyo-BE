@@ -33,6 +33,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  */
 @SpringBootTest(properties = {
     "sumpyo.simulator.enabled=false",
+    "sumpyo.notification.scan-enabled=false",
     "sumpyo.demo.password=test-demo-password",
     "DB_USERNAME=unused", "DB_PASSWORD=unused", "DEVICE_KEY_517=test-device-key"
 })
@@ -58,7 +59,8 @@ class MeApiIntegrationTest {
     putJson("/api/me/zones", "[]").andExpect(status().isOk());
     putJson("/api/me/settings", """
         {"co2Threshold":1000,"tempMin":20,"tempMax":26,"humidityMin":40,"humidityMax":60,
-         "alertEnabled":true,"alertLeadMinutes":15}""").andExpect(status().isOk());
+         "alertEnabled":true,"alertLeadMinutes":15,
+         "notifyVentilation":true,"notifyComplaint":true,"notifySensorError":true}""").andExpect(status().isOk());
     jdbc.update("delete from action");
     jdbc.update("delete from sensor_reading");
   }
@@ -162,7 +164,27 @@ class MeApiIntegrationTest {
           .andExpect(jsonPath("$.data.cautionFrom").value(900))
           .andExpect(jsonPath("$.data.criticalFrom").value(1200))
           .andExpect(jsonPath("$.data.alertEnabled").value(true))
-          .andExpect(jsonPath("$.data.alertLeadMinutes").value(15));
+          .andExpect(jsonPath("$.data.alertLeadMinutes").value(15))
+          .andExpect(jsonPath("$.data.notifyVentilation").value(true))
+          .andExpect(jsonPath("$.data.notifyComplaint").value(true))
+          .andExpect(jsonPath("$.data.notifySensorError").value(true));
+    }
+
+    @Test
+    void 알림_종류별_on_off는_보낸_것만_바뀐다() throws Exception {
+      putJson("/api/me/settings", "{\"notifySensorError\":false}")
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.data.notifySensorError").value(false))
+          .andExpect(jsonPath("$.data.notifyVentilation").value(true))
+          .andExpect(jsonPath("$.data.notifyComplaint").value(true))
+          .andExpect(jsonPath("$.data.alertEnabled").value(true));
+      putJson("/api/me/settings", "{\"notifyVentilation\":false,\"notifyComplaint\":false}").andExpect(status().isOk());
+
+      mvc.perform(get("/api/me/settings"))
+          .andExpect(jsonPath("$.data.notifyVentilation").value(false))
+          .andExpect(jsonPath("$.data.notifyComplaint").value(false))
+          .andExpect(jsonPath("$.data.notifySensorError").value(false))
+          .andExpect(jsonPath("$.data.co2Threshold").value(1000));
     }
 
     @Test
