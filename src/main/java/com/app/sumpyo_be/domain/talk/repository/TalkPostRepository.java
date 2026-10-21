@@ -2,6 +2,7 @@ package com.app.sumpyo_be.domain.talk.repository;
 
 import com.app.sumpyo_be.domain.talk.entity.TalkPost;
 import com.app.sumpyo_be.domain.talk.entity.TalkStatus;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 public interface TalkPostRepository extends JpaRepository<TalkPost, Long>, JpaSpecificationExecutor<TalkPost> {
@@ -30,9 +32,12 @@ public interface TalkPostRepository extends JpaRepository<TalkPost, Long>, JpaSp
   @Query("update TalkPost p set p.status = :to where p.id = :id and p.status = :from")
   int changeStatus(@Param("id") Long id, @Param("from") TalkStatus from, @Param("to") TalkStatus to);
 
-  /** 아직 없을 때만 저장 (동시에 열어도 먼저 저장한 추천이 유지된다) */
-  @Transactional
+  /**
+   * 추천 답변과 생성 시각을 덮어쓴다 (비동기 생성 결과, 30분 지난 추천 재생성).
+   * AFTER_COMMIT 리스너에서는 끝난 트랜잭션이 아직 묶여 있어 REQUIRED 로는 참여할 트랜잭션이 없으므로 새로 연다
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   @Modifying(clearAutomatically = true)
-  @Query("update TalkPost p set p.suggestions = :suggestions where p.id = :id and p.suggestions is null")
-  int saveSuggestionsIfAbsent(@Param("id") Long id, @Param("suggestions") String suggestions);
+  @Query("update TalkPost p set p.suggestions = :suggestions, p.suggestionsGeneratedAt = :at where p.id = :id")
+  int saveSuggestions(@Param("id") Long id, @Param("suggestions") String suggestions, @Param("at") LocalDateTime at);
 }
