@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.member;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
@@ -10,6 +11,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.app.sumpyo_be.domain.room.entity.Room;
+import com.app.sumpyo_be.domain.room.entity.RoomType;
+import com.app.sumpyo_be.domain.room.entity.SensorLevel;
+import com.app.sumpyo_be.domain.room.repository.RoomRepository;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +52,7 @@ class MeApiIntegrationTest {
 
   @Autowired MockMvc mvc;
   @Autowired JdbcTemplate jdbc;
+  @Autowired RoomRepository roomRepository;
 
   long bukak;    // 북악관 (max 7)
   long hyein;    // 혜인관 (max 5)
@@ -88,6 +94,45 @@ class MeApiIntegrationTest {
             "은주1관", "은주2관", "청운관", "한림관", "혜인관", "수인관")))
         .andExpect(jsonPath("$.data[3].maxFloor").value(7))
         .andExpect(jsonPath("$.data[10].maxFloor").value(5));
+  }
+
+  @Test
+  void 북악관_5층_6층_평면도는_배치_순서대로_17칸() throws Exception {
+    mvc.perform(get("/api/buildings/{id}/floors/5", bukak))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.rooms", hasSize(17)))
+        .andExpect(jsonPath("$.data.rooms[*].number", contains(
+            "521", "520", "519", "화장실1", "화장실2", "518", "517", "516",
+            "504", "505", "506", "507", "508", "512", "513", "514", "515")))
+        .andExpect(jsonPath("$.data.rooms[*].type", contains(
+            "LECTURE", "LECTURE", "LECTURE", "RESTROOM", "RESTROOM", "LECTURE", "LECTURE", "LECTURE",
+            "ETC", "ETC", "ETC", "ETC", "LECTURE", "ETC", "LECTURE", "LECTURE", "LECTURE")))
+        .andExpect(jsonPath("$.data.rooms[*].side", contains(
+            "TOP", "TOP", "TOP", "TOP", "TOP", "TOP", "TOP", "TOP",
+            "BOTTOM", "BOTTOM", "BOTTOM", "BOTTOM", "BOTTOM", "BOTTOM", "BOTTOM", "BOTTOM", "BOTTOM")))
+        .andExpect(jsonPath("$.data.rooms[8].status").value("NO_SENSOR"));
+
+    mvc.perform(get("/api/buildings/{id}/floors/6", bukak))
+        .andExpect(jsonPath("$.data.rooms", hasSize(17)))
+        .andExpect(jsonPath("$.data.rooms[*].number", contains(
+            "621", "620", "619", "화장실1", "화장실2", "618", "617", "616",
+            "604", "605", "606", "607", "608", "612", "613", "614", "615")))
+        .andExpect(jsonPath("$.data.rooms[8].type").value("ETC"))
+        .andExpect(jsonPath("$.data.rooms[13].type").value("ETC"))
+        .andExpect(jsonPath("$.data.rooms[13].status").value("NO_SENSOR"));
+  }
+
+  @Test
+  void 시뮬레이터_대상은_SIM_강의실만() {
+    jdbc.update("update room set sensor_level = 'SIM' where code = 'bukak-5F-WC1'");
+    try {
+      assertThat(roomRepository.findBySensorLevelAndType(SensorLevel.SIM, RoomType.LECTURE))
+          .extracting(Room::getCode)
+          .contains("bukak-519", "bukak-508", "bukak-618")
+          .doesNotContain("bukak-5F-WC1", "bukak-504", "bukak-512", "bukak-604", "bukak-612", "bukak-617");
+    } finally {
+      jdbc.update("update room set sensor_level = 'NONE' where code = 'bukak-5F-WC1'");
+    }
   }
 
   @Nested

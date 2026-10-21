@@ -7,6 +7,7 @@ import com.app.sumpyo_be.domain.reading.dto.SensorPayload;
 import com.app.sumpyo_be.domain.reading.entity.SensorReading;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.room.entity.Room;
+import com.app.sumpyo_be.domain.room.entity.RoomType;
 import com.app.sumpyo_be.domain.room.entity.SensorLevel;
 import com.app.sumpyo_be.domain.room.repository.RoomRepository;
 import com.app.sumpyo_be.domain.schedule.entity.ClassSchedule;
@@ -35,7 +36,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * sensor_level = SIM 인 방마다 1분에 한 번 sensor_reading 을 넣는다. 식은 SimulationModel 참고.
+ * sensor_level = SIM 인 강의실(LECTURE)마다 1분에 한 번 sensor_reading 을 넣는다. 식은 SimulationModel 참고.
  * 끄려면 sumpyo.simulator.enabled=false (환경변수 SIMULATOR_ENABLED=false).
  */
 @Slf4j
@@ -66,7 +67,8 @@ public class SensorSimulator {
   }
 
   void simulate(LocalDateTime now) {
-    List<Room> rooms = roomRepository.findBySensorLevel(SensorLevel.SIM);
+    // 강의실만 (수업·인원 기반 모델이라 화장실·기타 방은 SIM 이어도 돌리지 않는다)
+    List<Room> rooms = roomRepository.findBySensorLevelAndType(SensorLevel.SIM, RoomType.LECTURE);
     if (rooms.isEmpty()) {
       return;
     }

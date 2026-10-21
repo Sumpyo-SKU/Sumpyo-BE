@@ -83,6 +83,7 @@ class TalkApiIntegrationTest {
   long r618;
   long r508;
   long wc6;
+  long r604;   // V8 부터 기타(ETC)
   long hyeinRoom;
 
   @BeforeEach
@@ -99,6 +100,7 @@ class TalkApiIntegrationTest {
     r618 = roomId("bukak-618");
     r508 = roomId("bukak-508");
     wc6 = roomId("bukak-6F-WC1");
+    r604 = roomId("bukak-604");
     jdbc.update("""
         insert into room (building_id, code, number, floor, type, sensor_level)
         values (?, 'hyein-301', '301', 3, 'LECTURE', 'NONE') on conflict (code) do nothing""", hyein);
@@ -277,7 +279,7 @@ class TalkApiIntegrationTest {
     @Test
     void 다른_층_방_다른_건물_방_강의실_아닌_방은_400_실패하면_기존_값_유지() throws Exception {
       filter(W2, "[{\"floor\":6,\"roomIds\":[" + r617 + "]}]");
-      for (long roomId : new long[] {r508, hyeinRoom, wc6, 999_999}) {
+      for (long roomId : new long[] {r508, hyeinRoom, wc6, r604, 999_999}) {
         as(W2, put("/api/me/talk-filter"), "{\"floors\":[{\"floor\":6,\"roomIds\":[" + roomId + "]}]}")
             .andExpect(status().isBadRequest());
       }
@@ -308,7 +310,11 @@ class TalkApiIntegrationTest {
     }
 
     @Test
-    void 범위_밖_층_다른_건물_방_다른_층_방은_400() throws Exception {
+    void 범위_밖_층_다른_건물_방_다른_층_방_강의실_아닌_방은_400() throws Exception {
+      for (long roomId : new long[] {wc6, r604}) {
+        as(W1, post("/api/talks"), "{\"floor\":6,\"roomId\":" + roomId + ",\"content\":\"x\"}")
+            .andExpect(status().isBadRequest());
+      }
       as(W1, post("/api/talks"), "{\"floor\":8,\"content\":\"x\"}").andExpect(status().isBadRequest());
       as(W1, post("/api/talks"), "{\"floor\":3,\"roomId\":" + hyeinRoom + ",\"content\":\"x\"}")
           .andExpect(status().isBadRequest());

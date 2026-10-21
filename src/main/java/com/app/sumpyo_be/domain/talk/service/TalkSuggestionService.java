@@ -163,6 +163,6 @@ public class TalkSuggestionService {
     if (!m.find()) {
       return Optional.empty();
     }
-    return roomRepository.findWithBuildingByBuildingIdAndNumber(post.getBuilding().getId(), m.group(1));
+    return roomRepository.findLectureWithBuildingByBuildingIdAndNumber(post.getBuilding().getId(), m.group(1));
   }
 }

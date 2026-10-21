@@ -23,7 +23,7 @@ public class RoomLookupService {
   private final RoomRepository roomRepository;
 
   /**
-   * code 가 있으면 code 로, 없으면 buildingId + number 로 찾는다. 둘 다 없으면 400.
+   * code 가 있으면 code 로, 없으면 buildingId + number 로 강의실을 찾는다. 둘 다 없으면 400.
    * 강의실 데이터가 없는 건물(북악관 외)은 404 가 정상이다.
    */
   public RoomLookupResponse lookup(String code, Long buildingId, String number) {
@@ -35,7 +35,7 @@ public class RoomLookupService {
       if (buildingId == null || normalized.isEmpty()) {
         throw new CustomException(GlobalErrorCode.INVALID_ROOM_LOOKUP);
       }
-      room = roomRepository.findWithBuildingByBuildingIdAndNumber(buildingId, normalized);
+      room = roomRepository.findLectureWithBuildingByBuildingIdAndNumber(buildingId, normalized);
     }
     return room.map(RoomLookupResponse::from)
         .orElseThrow(() -> new CustomException(GlobalErrorCode.ROOM_LOOKUP_NOT_FOUND));

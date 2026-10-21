@@ -89,7 +89,7 @@ public class TalkFilterService {
 
   /**
    * 목록·응답에 쓰는 필터 (층 → 강의실, 둘 다 정렬). 비면 건물 전체, 강의실이 비면 그 층 전체.
-   * 담당 구역을 다른 건물로 바꿔 지금 건물에 안 맞게 된 줄은 무시한다
+   * 담당 구역을 다른 건물로 바꿔 지금 건물에 안 맞게 된 줄, 강의실이 아니게 된 방(예: V8 북악관 604~607) 줄은 무시한다
    * (그 층의 강의실 줄이 전부 안 맞으면 그 층도 뺀다 → 층 전체로 넓어지지 않게).
    */
   @Transactional(readOnly = true)
@@ -103,7 +103,8 @@ public class TalkFilterService {
       if (row.getRoom() == null) {
         wholeFloors.add(row.getFloor());
         result.put(row.getFloor(), new ArrayList<>());
-      } else if (TalkAccess.isOnFloor(row.getRoom(), building, row.getFloor()) && !wholeFloors.contains(row.getFloor())) {
+      } else if (row.getRoom().getType() == RoomType.LECTURE
+          && TalkAccess.isOnFloor(row.getRoom(), building, row.getFloor()) && !wholeFloors.contains(row.getFloor())) {
         result.computeIfAbsent(row.getFloor(), k -> new ArrayList<>()).add(row.getRoom());
       }
     }

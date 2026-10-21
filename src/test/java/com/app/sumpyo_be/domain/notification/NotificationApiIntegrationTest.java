@@ -415,8 +415,9 @@ class NotificationApiIntegrationTest {
     }
 
     @Test
-    void 화장실은_400_없는_방은_404() throws Exception {
+    void 화장실_기타_방은_400_없는_방은_404() throws Exception {
       as(W1, get("/api/rooms/{id}/qr", wc6)).andExpect(status().isBadRequest());
+      as(W1, get("/api/rooms/{id}/qr", roomId("bukak-604"))).andExpect(status().isBadRequest());
       as(W1, get("/api/rooms/{id}/qr/info", wc6)).andExpect(status().isBadRequest());
       as(W1, get("/api/rooms/{id}/qr", 99999)).andExpect(status().isNotFound());
     }
