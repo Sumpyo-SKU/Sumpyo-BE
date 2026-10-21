@@ -20,19 +20,12 @@ services:
       retries: 10
     restart: unless-stopped
 
-  redis:
-    image: redis:7
-    container_name: sumpyo-redis
-    restart: unless-stopped
-
   app:
     image: ${DOCKERHUB_USERNAME}/sumpyo-be:${IMAGE_TAG:-latest}
     container_name: sumpyo-app
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_started
     environment:
       DB_URL: jdbc:postgresql://db:5432/sumpyo
       DB_USERNAME: ${DB_USERNAME}
@@ -46,8 +39,6 @@ services:
       LLM_MODEL: ${LLM_MODEL:-}
       SIMULATOR_ENABLED: ${SIMULATOR_ENABLED:-true}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
       JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"   # 1GB 인스턴스 기준
     ports:
       - "8080:8080"   # 아두이노는 HTTP 8080 으로 직접 전송

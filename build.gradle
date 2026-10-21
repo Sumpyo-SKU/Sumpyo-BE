@@ -31,9 +31,6 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
 
-    // Redis
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-
     // Validation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
@@ -60,7 +57,6 @@ dependencies {
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-actuator-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
@@ -68,12 +64,11 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // Test - Testcontainers (CI/로컬에서 Docker로 Postgres/Redis 자동 기동)
+    // Test - Testcontainers (CI/로컬에서 Docker로 Postgres 자동 기동)
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     // Boot 4 는 Testcontainers 2.x 를 관리 (2.x 부터 모듈 이름이 testcontainers-* 로 바뀜)
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
     testImplementation 'org.testcontainers:testcontainers-postgresql'
-    testImplementation 'com.redis:testcontainers-redis'
 }
 
 tasks.named('test') {
