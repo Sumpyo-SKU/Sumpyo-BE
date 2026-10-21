@@ -69,6 +69,7 @@ public class RoomService {
             AirQualityJudge.pendingActionMessage(c.status(), c.minutesToExceed(), a.getSummary())))
         .orElse(null);
 
+    Integer score = AirQualityJudge.comfortScore(c.co2(), c.temp(), c.humidity(), t);
     List<ClassSchedule> today = classScheduleService.classesOn(roomId, now.toLocalDate());
     CurrentAndNext cn = ClassScheduleService.currentAndNext(today, now.toLocalTime());
     ClassSchedule cur = cn.current();
@@ -78,7 +79,8 @@ public class RoomService {
         room.getId(), room.getBuilding().getName(), room.getNumber(), room.getFloor(),
         room.getSensorLevel().isSimulated(),
         c.co2(), c.temp(), c.humidity(),
-        AirQualityJudge.comfortScore(c.co2(), c.temp(), c.humidity(), t),
+        score,
+        AirQualityJudge.comfortLevel(score),
         AirQualityJudge.co2Level(c.co2(), t.co2()),
         AirQualityJudge.co2OverBy(c.co2(), t.co2()),
         AirQualityJudge.tempLabel(c.temp(), t.tempMin(), t.tempMax()),
@@ -97,11 +99,12 @@ public class RoomService {
     LocalDateTime now = LocalDateTime.now(clock);
     Thresholds t = thresholdService.current();
     return readingRepository.findTopByRoomOrderByMeasuredAtDesc(room)
-        .map(r -> new LatestReadingResponse(roomId, r.getCo2(), r.getTemp(), r.getHumidity(),
-            AirQualityJudge.comfortScore(r.getCo2(), r.getTemp(), r.getHumidity(), t),
-            AirQualityJudge.co2Level(r.getCo2(), t.co2()),
-            r.getMeasuredAt(),
-            !r.getMeasuredAt().isBefore(now.minus(AirQualityJudge.FRESH_WINDOW))))
+        .map(r -> {
+          Integer score = AirQualityJudge.comfortScore(r.getCo2(), r.getTemp(), r.getHumidity(), t);
+          return new LatestReadingResponse(roomId, r.getCo2(), r.getTemp(), r.getHumidity(), score,
+              AirQualityJudge.comfortLevel(score), r.getMeasuredAt(),
+              !r.getMeasuredAt().isBefore(now.minus(AirQualityJudge.FRESH_WINDOW)));
+        })
         .orElseGet(() -> new LatestReadingResponse(roomId, null, null, null, null, null, null, false));
   }
 

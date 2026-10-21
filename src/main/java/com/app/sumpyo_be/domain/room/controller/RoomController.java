@@ -2,9 +2,11 @@ package com.app.sumpyo_be.domain.room.controller;
 
 import com.app.sumpyo_be.global.common.BaseResponse;
 import com.app.sumpyo_be.domain.room.dto.LatestReadingResponse;
+import com.app.sumpyo_be.domain.room.dto.NextClassForecastResponse;
 import com.app.sumpyo_be.domain.room.dto.PredictionSeriesResponse;
 import com.app.sumpyo_be.domain.room.dto.ReadingSeriesResponse;
 import com.app.sumpyo_be.domain.room.dto.RoomResponse;
+import com.app.sumpyo_be.domain.room.service.RoomForecastService;
 import com.app.sumpyo_be.domain.room.service.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,11 +30,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class RoomController {
 
   private final RoomService roomService;
+  private final RoomForecastService roomForecastService;
 
   @Operation(summary = "강의실 상세", description = "평면도 바텀시트·강의실 상세 공용. 현재 CO2·온습도, 쾌적도, 대기 조치, 현재/다음 수업을 반환합니다.")
   @GetMapping
   public BaseResponse<RoomResponse> room(@Parameter(description = "강의실 ID", example = "7") @PathVariable Long roomId) {
     return BaseResponse.success(roomService.getRoom(roomId));
+  }
+
+  @Operation(summary = "수업 중 예보",
+      description = "권한 W, A. 진행 중인 수업, 없으면 오늘 남은 다음 수업(휴강 제외)의 CO2 예보. 수업이 없으면 data: null. "
+          + "co2AtEnd 는 종료 시각에 가장 가까운 예측(±10분, 같은 시각이면 최신 예측), 없으면 null 이고 "
+          + "headline '예측 데이터를 모으는 중이에요', needsVentilation null. "
+          + "headline: 시작 시각(이미 시작했으면 지금 값)이 기준 이상 → '수업 전에 환기가 필요해요', "
+          + "종료 시각만 기준 이상 → '수업 후반엔 환기가 필요해요', 둘 다 아니면 '수업 내내 쾌적할 거예요'. "
+          + "예측은 창문을 닫은 상태 가정이라 condition '창문을 닫아두면'.")
+  @GetMapping("/forecast/next-class")
+  public BaseResponse<NextClassForecastResponse> nextClassForecast(
+      @Parameter(description = "강의실 ID", example = "7") @PathVariable Long roomId) {
+    return BaseResponse.success(roomForecastService.nextClass(roomId));
   }
 
   /** 마지막 측정값 + 센서 연결 여부 */

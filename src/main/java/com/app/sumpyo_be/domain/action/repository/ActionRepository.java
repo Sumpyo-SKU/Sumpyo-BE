@@ -3,6 +3,8 @@ package com.app.sumpyo_be.domain.action.repository;
 import com.app.sumpyo_be.domain.action.entity.Action;
 import com.app.sumpyo_be.domain.action.entity.ActionSource;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
+import com.app.sumpyo_be.domain.action.entity.Recommend;
+import com.app.sumpyo_be.domain.room.entity.Room;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -41,6 +43,15 @@ public interface ActionRepository extends JpaRepository<Action, Long> {
       """)
   List<Action> findExpectedBetween(@Param("source") ActionSource source, @Param("status") ActionStatus status,
       @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+  /** 창문이 열린 방: 환기 중(IN_PROGRESS)이고 아직 창문을 닫지 않은 조치가 있는 방 */
+  @Query("""
+      select distinct r from Action a join a.room r
+      where a.status = com.app.sumpyo_be.domain.action.entity.ActionStatus.IN_PROGRESS and a.windowClosedAt is null
+      """)
+  List<Room> findRoomsWithOpenWindow();
+
+  boolean existsByRoomIdAndRecommendAndStatus(Long roomId, Recommend recommend, ActionStatus status);
 
   @Query("select distinct a.room.id from Action a where a.room.id in :roomIds and a.status = :status")
   List<Long> findRoomIdsByStatus(@Param("roomIds") Collection<Long> roomIds, @Param("status") ActionStatus status);

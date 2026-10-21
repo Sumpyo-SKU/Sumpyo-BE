@@ -48,6 +48,13 @@ sumpyo:
   notification:
     # 알림 스캔(환기·곧 환기·센서 끊김) 1분마다. 테스트에서는 끄고 직접 호출
     scan-enabled: ${NOTIFICATION_SCAN_ENABLED:true}
+  outdoor:
+    # 바깥 공기 수집 (공공데이터포털, 매시 10분). 키·위치가 하나라도 비면 수집하지 않고 경고만
+    api-key: ${DATA_GO_KR_KEY:}
+    nx: ${WEATHER_NX:}
+    ny: ${WEATHER_NY:}
+    station: ${AIR_STATION_NAME:}
+    collect-enabled: ${OUTDOOR_COLLECT_ENABLED:true}
   llm:
     # 캠퍼스톡 추천 답변. 셋 다 있을 때만 LLM 사용 (gemini | openai | anthropic), 아니면 규칙 기반
     provider: ${LLM_PROVIDER:}

@@ -1,7 +1,7 @@
 package com.app.sumpyo_be.domain.room.dto;
 
 import com.app.sumpyo_be.domain.air.AirQualityJudge;
-import com.app.sumpyo_be.domain.air.Co2Level;
+import com.app.sumpyo_be.domain.air.ComfortLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -36,9 +36,9 @@ public class LatestReadingResponse {
   @Schema(description = AirQualityJudge.COMFORT_SCORE_DESCRIPTION, example = "74")
   private Integer comfortScore;
 
-  @Schema(description = "CO2 수준 (NORMAL: 정상, CAUTION: 주의 = 기준×0.9 이상, CRITICAL: 위험 = 기준×1.2 이상)",
-      example = "CAUTION")
-  private Co2Level level;
+  @Schema(description = "쾌적도 등급 (GOOD: 좋음 = 70 이상, NORMAL: 보통 = 41~69, BAD: 나쁨 = 40 이하). 점수가 없으면 null",
+      example = "GOOD")
+  private ComfortLevel level;
 
   @Schema(description = "측정 시각 (KST)", example = "2026-10-16T14:05:00")
   private LocalDateTime measuredAt;

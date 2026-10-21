@@ -47,6 +47,12 @@ public final class AirQualityJudge {
       + "근거: CO2 기준 1000ppm 은 실내공기질관리법 다중이용시설 유지기준, 온습도 범위는 일반적인 실내 쾌적 범위, "
       + "가중치는 환기(창문 열기)로 바로 바꿀 수 있는 CO2 중심으로 자체 설정";
 
+  // ---- 쾌적도 등급 ----
+  /** 이 점수 이상이면 GOOD */
+  public static final int COMFORT_GOOD_FROM = 70;
+  /** 이 점수 이하면 BAD (사이는 NORMAL) */
+  public static final int COMFORT_BAD_UNTIL = 40;
+
   static final double CO2_WEIGHT = 0.60;
   static final double TEMP_WEIGHT = 0.25;
   static final double HUMIDITY_WEIGHT = 0.15;
@@ -177,6 +183,17 @@ public final class AirQualityJudge {
       weights += HUMIDITY_WEIGHT;
     }
     return weights == 0 ? null : (int) Math.round(weighted / weights);
+  }
+
+  /** 쾌적도 점수 → 등급. 70 이상 GOOD, 41~69 NORMAL, 40 이하 BAD, 점수가 없으면(센서 끊김 등) null */
+  public static ComfortLevel comfortLevel(Integer comfortScore) {
+    if (comfortScore == null) {
+      return null;
+    }
+    if (comfortScore >= COMFORT_GOOD_FROM) {
+      return ComfortLevel.GOOD;
+    }
+    return comfortScore <= COMFORT_BAD_UNTIL ? ComfortLevel.BAD : ComfortLevel.NORMAL;
   }
 
   private static double rangeScore(int value, int min, int max, double penaltyPerUnit) {

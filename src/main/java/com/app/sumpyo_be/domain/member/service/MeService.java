@@ -4,6 +4,7 @@ import com.app.sumpyo_be.domain.building.entity.Building;
 import com.app.sumpyo_be.domain.building.repository.BuildingRepository;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
+import com.app.sumpyo_be.domain.member.dto.MyRoomResponse;
 import com.app.sumpyo_be.domain.member.dto.SettingsResponse;
 import com.app.sumpyo_be.domain.member.dto.SettingsUpdateRequest;
 import com.app.sumpyo_be.domain.member.dto.ZoneRequest;
@@ -12,6 +13,7 @@ import com.app.sumpyo_be.domain.member.entity.Member;
 import com.app.sumpyo_be.domain.member.entity.MemberZone;
 import com.app.sumpyo_be.domain.member.entity.Role;
 import com.app.sumpyo_be.domain.member.repository.MemberZoneRepository;
+import com.app.sumpyo_be.domain.room.repository.RoomRepository;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -38,6 +40,7 @@ public class MeService {
   private final MemberAccess memberAccess;
   private final MemberZoneRepository zoneRepository;
   private final BuildingRepository buildingRepository;
+  private final RoomRepository roomRepository;
 
   // ---------------- 담당 구역 (권한 W) ----------------
 
@@ -95,6 +98,12 @@ public class MeService {
     return byBuilding.entrySet().stream()
         .map(e -> new ZoneResponse(e.getKey().getId(), e.getKey().getName(), e.getValue()))
         .toList();
+  }
+
+  /** 홈 방 선택: 담당 구역의 센서 있는 강의실 (LECTURE, FULL·SIM). 비면 빈 배열 → 프론트가 담당 구역 설정 안내 */
+  public List<MyRoomResponse> getMyRooms() {
+    Member me = memberAccess.require(Role.WORKER);
+    return roomRepository.findSensorLecturesInMemberZones(me.getId()).stream().map(MyRoomResponse::from).toList();
   }
 
   // ---------------- 설정 (권한 W, A) ----------------

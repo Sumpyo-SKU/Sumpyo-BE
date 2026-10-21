@@ -2,6 +2,7 @@ package com.app.sumpyo_be.domain.notification.controller;
 
 import com.app.sumpyo_be.domain.notification.dto.NotificationListResponse;
 import com.app.sumpyo_be.domain.notification.dto.NotificationReadAllResponse;
+import com.app.sumpyo_be.domain.notification.dto.NotificationUnreadCountResponse;
 import com.app.sumpyo_be.domain.notification.service.NotificationService;
 import com.app.sumpyo_be.global.common.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +37,12 @@ public class NotificationController {
       @Parameter(description = "페이지 크기 (1~50)", example = "20")
       @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size) {
     return BaseResponse.success(notificationService.list(page, size));
+  }
+
+  @Operation(summary = "안 읽은 알림 수", description = "권한 W. 알림 종 배지용 (최근 7일 안 읽은 알림 수만).")
+  @GetMapping("/unread-count")
+  public BaseResponse<NotificationUnreadCountResponse> unreadCount() {
+    return BaseResponse.success(notificationService.unreadCount());
   }
 
   @Operation(summary = "알림 읽음", description = "권한 W. 본인 알림만 (아니면 403), 없으면 404. 이미 읽었으면 그대로 200.")

@@ -5,6 +5,7 @@ import com.app.sumpyo_be.domain.member.entity.Role;
 import com.app.sumpyo_be.domain.member.service.MemberAccess;
 import com.app.sumpyo_be.domain.notification.dto.NotificationListResponse;
 import com.app.sumpyo_be.domain.notification.dto.NotificationReadAllResponse;
+import com.app.sumpyo_be.domain.notification.dto.NotificationUnreadCountResponse;
 import com.app.sumpyo_be.domain.notification.entity.Notification;
 import com.app.sumpyo_be.domain.notification.repository.NotificationRepository;
 import com.app.sumpyo_be.global.exception.CustomException;
@@ -42,6 +43,14 @@ public class NotificationService {
         .content(slice.getContent().stream().map(NotificationListResponse.Item::from).toList())
         .hasNext(slice.hasNext())
         .build();
+  }
+
+  /** 알림 종 배지용. 개수 쿼리 하나만 */
+  @Transactional(readOnly = true)
+  public NotificationUnreadCountResponse unreadCount() {
+    Member me = memberAccess.require(Role.WORKER);
+    return new NotificationUnreadCountResponse(notificationRepository
+        .countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(me.getId(), LocalDateTime.now(clock).minus(VISIBLE_FOR)));
   }
 
   /** 본인 것만 (아니면 403). 이미 읽었으면 그대로 */

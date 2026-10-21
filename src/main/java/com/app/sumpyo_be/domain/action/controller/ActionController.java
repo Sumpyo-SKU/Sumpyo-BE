@@ -33,14 +33,21 @@ public class ActionController {
    * 조치 목록. zone=mine 이면 내 담당 구역만, status 는 쉼표로 여러 개 (기본 PENDING,CHECKED,IN_PROGRESS)
    * 예: GET /api/actions?zone=mine&status=PENDING,CHECKED
    */
-  @Operation(summary = "조치 목록", description = "expectedAt 오름차순(급한 것부터). zone=mine 이면 내 담당 구역만, status 는 쉼표로 여러 개(기본 PENDING,CHECKED,IN_PROGRESS).")
+  @Operation(summary = "조치 목록", description = "expectedAt 오름차순(급한 것부터). zone=mine 이면 내 담당 구역만, buildingId 면 그 건물만, "
+      + "status 는 쉼표로 여러 개(기본 PENDING,CHECKED,IN_PROGRESS). "
+      + "홈 '창문 환기 예측' 카드: 지났거나 10분 이내면 timeLabel '지금'·relative null·metricLabel 'CO2', "
+      + "아니면 timeLabel HH:mm·relative '30분 뒤'·metricLabel 'CO2 예상'. "
+      + "title: CLOSE '창문을 닫아주세요', OPEN 이고 그 시각 전에 수업이 시작하면 '수업 전에 열어두세요', 그 외 '창문 열어주세요'. "
+      + "reason: CO2 'N분 뒤 기준 초과 예정'(지났으면 '기준 초과'), 비 예보 CLOSE '1시간 뒤 비 예상', 민원 '학생 민원 접수'.")
   @GetMapping
   public BaseResponse<List<ActionListItem>> list(
       @Parameter(description = "구역 필터. 비우면 전체, mine 이면 내 담당 구역", example = "mine")
       @RequestParam(required = false) String zone,
+      @Parameter(description = "건물 필터 (zone 과 함께 쓸 수 있음). 홈 '창문 환기 예측 · 북악관' 카드", example = "1")
+      @RequestParam(required = false) Long buildingId,
       @Parameter(description = "상태 필터 (쉼표로 여러 개)", example = "PENDING,CHECKED")
       @RequestParam(required = false) List<ActionStatus> status) {
-    return BaseResponse.success(actionService.list(zone, status));
+    return BaseResponse.success(actionService.list(zone, buildingId, status));
   }
 
   @Operation(summary = "조치 확인", description = "PENDING → CHECKED. 이미 CHECKED 면 그대로 성공, 그 외 상태는 409.")

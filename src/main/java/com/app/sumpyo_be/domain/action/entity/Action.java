@@ -98,6 +98,33 @@ public class Action {
   @Column(name = "completed_at")
   private LocalDateTime completedAt;
 
+  /** 요약 문구 (비 예보 창문 닫기) */
+  public static final String RAIN_CLOSE_SUMMARY = "비 예상 · 창문 닫기";
+
+  /**
+   * 비 예보 창문 닫기 조치 (RainCloseActionService). 예측 조치로 만들고 지표는 습도.
+   * @param humidity   그 시각 습도 예측, 없으면 현재 습도 (둘 다 없으면 null)
+   * @param expectedAt 비 예상 시각
+   */
+  public static Action rainClose(Room room, Integer humidity, LocalDateTime expectedAt, LocalDateTime now) {
+    Action a = new Action();
+    a.room = room;
+    a.source = ActionSource.PREDICTION;
+    a.recommend = Recommend.CLOSE;
+    a.metric = Metric.HUMIDITY;
+    a.predictedValue = humidity;
+    a.expectedAt = expectedAt;
+    a.summary = RAIN_CLOSE_SUMMARY;
+    a.status = ActionStatus.PENDING;
+    a.createdAt = now;
+    return a;
+  }
+
+  /** 비 예보로 만든 창문 닫기 조치인지 (습도 지표의 CLOSE 예측 조치) */
+  public boolean isRainClose() {
+    return source == ActionSource.PREDICTION && recommend == Recommend.CLOSE && metric == Metric.HUMIDITY;
+  }
+
   // 상태 전이 전 검사는 ActionService 에서 409 로 처리한다. 여기 검사는 잘못된 호출 방지용.
 
   /** [확인] PENDING → CHECKED. 이미 CHECKED 면 그대로 둔다. */

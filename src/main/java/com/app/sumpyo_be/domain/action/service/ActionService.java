@@ -21,9 +21,12 @@ import com.app.sumpyo_be.domain.member.service.MemberAccess;
 import com.app.sumpyo_be.domain.member.service.ThresholdService;
 import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
+import com.app.sumpyo_be.domain.schedule.entity.ClassSchedule;
+import com.app.sumpyo_be.domain.schedule.service.ClassScheduleService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +43,7 @@ public class ActionService {
   private final CurrentMemberProvider currentMemberProvider;
   private final MemberAccess memberAccess;
   private final ThresholdService thresholdService;
+  private final ClassScheduleService classScheduleService;
   private final Clock clock;
 
   /** 목록 기본 상태: 아직 끝나지 않은 조치 */
@@ -48,10 +52,11 @@ public class ActionService {
   /**
    * 조치 목록, expectedAt(없으면 createdAt) 오름차순 = 급한 것부터.
    * @param zone     null 이면 전체, "mine" 이면 내 담당 구역(member_zone 건물+층)의 방만. 담당 구역이 없으면 빈 목록
+   * @param buildingId null 이 아니면 그 건물 방만 (zone 과 함께 쓸 수 있음, 홈 "창문 환기 예측 · 북악관")
    * @param statuses null/빈 값이면 PENDING·CHECKED·IN_PROGRESS
    */
   @Transactional(readOnly = true)
-  public List<ActionListItem> list(String zone, List<ActionStatus> statuses) {
+  public List<ActionListItem> list(String zone, Long buildingId, List<ActionStatus> statuses) {
     List<ActionStatus> filter = statuses == null || statuses.isEmpty() ? ACTIVE : statuses;
     List<Action> actions;
     if (zone == null) {
@@ -62,9 +67,29 @@ public class ActionService {
     } else {
       throw new CustomException(GlobalErrorCode.INVALID_ZONE_FILTER);
     }
-    int fallbackThreshold = thresholdService.current().co2();
+    if (buildingId != null) {
+      actions = actions.stream().filter(a -> a.getRoom().getBuilding().getId().equals(buildingId)).toList();
+    }
+    if (actions.isEmpty()) {
+      return List.of();
+    }
+    Thresholds t = thresholdService.current();
     LocalDateTime now = LocalDateTime.now(clock);
-    return actions.stream().map(a -> ActionListItem.of(a, fallbackThreshold, now)).toList();
+    Map<Long, List<ClassSchedule>> classes = classScheduleService.classesOn(
+        actions.stream().map(a -> a.getRoom().getId()).distinct().toList(), now.toLocalDate());
+    return actions.stream()
+        .map(a -> ActionListItem.of(a, t, now, classStartsBefore(classes.get(a.getRoom().getId()), now, ActionListItem.dueAt(a))))
+        .toList();
+  }
+
+  /** (지금, 예상 시각] 사이에 시작하는 수업이 있는지 (오늘 수업만, 휴강 제외) */
+  static boolean classStartsBefore(List<ClassSchedule> classes, LocalDateTime now, LocalDateTime dueAt) {
+    if (classes == null || !dueAt.isAfter(now)) {
+      return false;
+    }
+    return classes.stream()
+        .map(c -> now.toLocalDate().atTime(c.getStartTime()))
+        .anyMatch(start -> start.isAfter(now) && !start.isAfter(dueAt));
   }
 
   /** [확인] PENDING → CHECKED. 이미 CHECKED 면 그대로 성공. */
