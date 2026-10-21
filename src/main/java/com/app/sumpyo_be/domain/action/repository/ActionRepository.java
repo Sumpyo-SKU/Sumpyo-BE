@@ -1,7 +1,9 @@
 package com.app.sumpyo_be.domain.action.repository;
 
 import com.app.sumpyo_be.domain.action.entity.Action;
+import com.app.sumpyo_be.domain.action.entity.ActionSource;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +33,14 @@ public interface ActionRepository extends JpaRepository<Action, Long> {
       """)
   List<Action> findListInMemberZones(@Param("memberId") Long memberId,
       @Param("statuses") Collection<ActionStatus> statuses);
+
+  /** 기준 초과 예상 시각이 (from, to] 안인 조치 (곧 환기 알림) */
+  @Query("""
+      select a from Action a join fetch a.room r join fetch r.building
+      where a.source = :source and a.status = :status and a.expectedAt > :from and a.expectedAt <= :to
+      """)
+  List<Action> findExpectedBetween(@Param("source") ActionSource source, @Param("status") ActionStatus status,
+      @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
   @Query("select distinct a.room.id from Action a where a.room.id in :roomIds and a.status = :status")
   List<Long> findRoomIdsByStatus(@Param("roomIds") Collection<Long> roomIds, @Param("status") ActionStatus status);

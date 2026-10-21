@@ -6,6 +6,7 @@ import com.app.sumpyo_be.domain.complaint.dto.ComplaintCreateResponse;
 import com.app.sumpyo_be.domain.complaint.entity.Complaint;
 import com.app.sumpyo_be.domain.complaint.entity.ComplaintCategory;
 import com.app.sumpyo_be.domain.complaint.repository.ComplaintRepository;
+import com.app.sumpyo_be.domain.notification.service.ComplaintNotifier;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
@@ -35,11 +36,12 @@ public class ComplaintService {
   private final RoomRepository roomRepository;
   private final SensorReadingRepository readingRepository;
   private final ClientHasher clientHasher;
+  private final ComplaintNotifier complaintNotifier;
   private final Clock clock;
 
   /**
    * 민원 저장 (status RECEIVED). 접수 시점 최근 10분 내 측정값을 스냅샷으로 남긴다.
-   * 같은 clientId 로 같은 방에 10분 안에 다시 내면 429.
+   * 같은 clientId 로 같은 방에 10분 안에 다시 내면 429. 담당 근로생에게 새 민원(·반복 민원) 알림을 바로 만든다.
    */
   public ComplaintCreateResponse create(ComplaintCreateRequest req) {
     if (!clientHasher.isReady()) {
@@ -59,6 +61,7 @@ public class ComplaintService {
     Complaint complaint = Complaint.receive(room, distinct(req.getCategories()), content,
         latestReading(room.getId(), now), clientHash, now);
     complaintRepository.save(complaint);
+    complaintNotifier.received(complaint, now);
     return ComplaintCreateResponse.from(complaint);
   }
 

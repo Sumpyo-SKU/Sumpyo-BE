@@ -36,6 +36,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  */
 @SpringBootTest(properties = {
     "sumpyo.simulator.enabled=false",
+    "sumpyo.notification.scan-enabled=false",
     "sumpyo.complaint.salt=test-salt",
     "cors.allowed-origins=https://sumpyo.example",
     "DB_USERNAME=unused", "DB_PASSWORD=unused", "DEVICE_KEY_517=test-device-key"
@@ -61,6 +62,7 @@ class ComplaintApiIntegrationTest {
   @BeforeEach
   void setUp() {
     jdbc.update("update action set complaint_id = null");
+    jdbc.update("delete from notification");   // 민원 접수 때 생긴 알림 (complaint FK)
     jdbc.update("delete from complaint");
     jdbc.update("delete from sensor_reading");
     bukak = jdbc.queryForObject("select id from building where name = '북악관'", Long.class);

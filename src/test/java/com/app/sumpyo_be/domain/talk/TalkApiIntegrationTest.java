@@ -16,6 +16,7 @@ import com.jayway.jsonpath.JsonPath;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.concurrent.Executor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.task.SyncTaskExecutor;
+import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -43,6 +46,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  */
 @SpringBootTest(properties = {
     "sumpyo.simulator.enabled=false",
+    "sumpyo.notification.scan-enabled=false",
     "sumpyo.demo.password=test-demo-password",
     "sumpyo.demo.header-login=true",
     // 로컬 .env 에 LLM 키가 있어도 테스트는 외부 API 를 부르지 않고 규칙 기반으로만
@@ -51,7 +55,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 })
 @AutoConfigureMockMvc(addFilters = false)   // main 엔 시큐리티가 없음. security-test 의존성이 테스트에서만 필터를 켜서 끈다
 @Testcontainers
-@Import(TalkApiIntegrationTest.FixedClock.class)   // @Nested 테스트에도 고정 시각이 적용되도록 명시
+// @Nested 테스트에도 고정 시각이 적용되도록 명시. 추천 답변 비동기 생성은 동기 실행기로 (결과가 매번 같도록)
+@Import({TalkApiIntegrationTest.FixedClock.class, TalkApiIntegrationTest.SyncAsync.class})
 class TalkApiIntegrationTest {
 
   private static final ZoneId KST = ZoneId.of("Asia/Seoul");
@@ -69,6 +74,15 @@ class TalkApiIntegrationTest {
     }
   }
 
+  /** @Async 를 요청 스레드에서 커밋 직후 바로 실행 (AsyncConfigurer 의 실행기가 기본 실행기보다 우선) */
+  @TestConfiguration
+  static class SyncAsync implements AsyncConfigurer {
+    @Override
+    public Executor getAsyncExecutor() {
+      return new SyncTaskExecutor();
+    }
+  }
+
   @Container
   @ServiceConnection
   static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16");
@@ -82,6 +96,7 @@ class TalkApiIntegrationTest {
   long r618;
   long r508;
   long wc6;
+  long r604;   // V8 부터 기타(ETC)
   long hyeinRoom;
 
   @BeforeEach
@@ -98,6 +113,7 @@ class TalkApiIntegrationTest {
     r618 = roomId("bukak-618");
     r508 = roomId("bukak-508");
     wc6 = roomId("bukak-6F-WC1");
+    r604 = roomId("bukak-604");
     jdbc.update("""
         insert into room (building_id, code, number, floor, type, sensor_level)
         values (?, 'hyein-301', '301', 3, 'LECTURE', 'NONE') on conflict (code) do nothing""", hyein);
@@ -276,7 +292,7 @@ class TalkApiIntegrationTest {
     @Test
     void 다른_층_방_다른_건물_방_강의실_아닌_방은_400_실패하면_기존_값_유지() throws Exception {
       filter(W2, "[{\"floor\":6,\"roomIds\":[" + r617 + "]}]");
-      for (long roomId : new long[] {r508, hyeinRoom, wc6, 999_999}) {
+      for (long roomId : new long[] {r508, hyeinRoom, wc6, r604, 999_999}) {
         as(W2, put("/api/me/talk-filter"), "{\"floors\":[{\"floor\":6,\"roomIds\":[" + roomId + "]}]}")
             .andExpect(status().isBadRequest());
       }
@@ -307,7 +323,11 @@ class TalkApiIntegrationTest {
     }
 
     @Test
-    void 범위_밖_층_다른_건물_방_다른_층_방은_400() throws Exception {
+    void 범위_밖_층_다른_건물_방_다른_층_방_강의실_아닌_방은_400() throws Exception {
+      for (long roomId : new long[] {wc6, r604}) {
+        as(W1, post("/api/talks"), "{\"floor\":6,\"roomId\":" + roomId + ",\"content\":\"x\"}")
+            .andExpect(status().isBadRequest());
+      }
       as(W1, post("/api/talks"), "{\"floor\":8,\"content\":\"x\"}").andExpect(status().isBadRequest());
       as(W1, post("/api/talks"), "{\"floor\":3,\"roomId\":" + hyeinRoom + ",\"content\":\"x\"}")
           .andExpect(status().isBadRequest());
@@ -450,17 +470,43 @@ class TalkApiIntegrationTest {
     }
 
     @Test
-    void 규칙_기반은_저장하지_않고_저장된_추천이_있으면_그것을_쓴다() throws Exception {
+    void 작성_커밋_후_만든_추천을_저장하고_30분_이내면_그대로_쓴다() throws Exception {
       long talkId = send(W1, 6, r617, "지금 수업 중인가요?");
-      as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.suggestions", hasSize(2)));
-      // 규칙 기반은 저장하지 않는다 (늦게 온 LLM 결과가 저장될 자리)
-      assertThat(jdbc.queryForObject("select suggestions from talk_post where id = ?", String.class, talkId)).isNull();
+      // 테스트는 동기 실행기라 응답 전에 비동기 생성이 끝나 있다 (LLM 설정 없음 → 규칙 기반)
+      assertThat(jdbc.queryForObject("select suggestions_generated_at from talk_post where id = ?",
+          LocalDateTime.class, talkId)).isEqualTo(NOW);
 
-      // (LLM 이) 저장해 두면 다시 열 때 새로 만들지 않고 저장된 값을 쓴다
+      // 저장값이 30분 이내면 정보가 바뀌어도 다시 만들지 않는다
       schedule617("02:30", "03:45");
-      jdbc.update("update talk_post set suggestions = '[\"저장된 추천\"]' where id = ?", talkId);
+      jdbc.update("update talk_post set suggestions = '[\"저장된 추천\"]', suggestions_generated_at = ? where id = ?",
+          NOW.minusMinutes(29), talkId);
       as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.suggestions", contains("저장된 추천")));
       as(W1, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.suggestions", empty()));
+    }
+
+    @Test
+    void 저장된_지_30분이_지나면_규칙_기반으로_다시_만들어_저장한다() throws Exception {
+      long talkId = send(W1, 6, r617, "지금 수업 중인가요?");
+      schedule617("02:30", "03:45");   // 그 사이 수업이 시작됐다고 가정
+      jdbc.update("update talk_post set suggestions = '[\"오래된 추천\"]', suggestions_generated_at = ? where id = ?",
+          NOW.minusMinutes(31), talkId);
+
+      as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.suggestions", contains(
+          "617호 지금 수업 중이에요 (데이터크롤링, 03:45까지)", "지금 북악관 6층에 있어요")));
+      assertThat(jdbc.queryForObject("select suggestions from talk_post where id = ?", String.class, talkId))
+          .contains("데이터크롤링");
+      assertThat(jdbc.queryForObject("select suggestions_generated_at from talk_post where id = ?",
+          LocalDateTime.class, talkId)).isEqualTo(NOW);
+    }
+
+    @Test
+    void 추천이_아직_없으면_규칙_기반으로_즉시_주고_저장하지_않는다() throws Exception {
+      long talkId = send(W1, 6, r617, "지금 수업 중인가요?");
+      jdbc.update("update talk_post set suggestions = null, suggestions_generated_at = null where id = ?", talkId);
+
+      as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.suggestions", contains(
+          "617호 지금 수업 없어요", "지금 북악관 6층에 있어요")));
+      assertThat(jdbc.queryForObject("select suggestions from talk_post where id = ?", String.class, talkId)).isNull();
     }
   }
 }

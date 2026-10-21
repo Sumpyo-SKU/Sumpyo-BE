@@ -46,9 +46,12 @@ public class TalkPost {
   @Column(nullable = false, length = 300)
   private String content;
 
-  /** 추천 답변 JSON 배열 문자열. 보낸 사람이 아닌 근로생이 처음 열 때 한 번 만든다 */
+  /** 추천 답변 JSON 배열 문자열. 작성 커밋 후 비동기로 만들고, 30분이 지나면 상세 조회 때 규칙 기반으로 다시 만든다 */
   @Column(columnDefinition = "text")
   private String suggestions;
+
+  @Column(name = "suggestions_generated_at")
+  private LocalDateTime suggestionsGeneratedAt;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 15)

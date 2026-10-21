@@ -50,7 +50,7 @@ public class TalkController {
   }
 
   @Operation(summary = "캠퍼스톡 보내기",
-      description = "권한 W. 건물은 내 건물로 자동. floor 필수(1~maxFloor), roomId 선택(내 건물·그 층의 방), content 1~300자.")
+      description = "권한 W. 건물은 내 건물로 자동. floor 필수(1~maxFloor), roomId 선택(내 건물·그 층의 방), content 1~300자. 저장 후 바로 응답하고 추천 답변은 커밋 후 비동기로 만든다.")
   @PostMapping
   public BaseResponse<TalkCreateResponse> create(@Valid @RequestBody TalkCreateRequest request) {
     return BaseResponse.success("캠퍼스톡을 보냈습니다.", talkService.create(request));
@@ -58,8 +58,9 @@ public class TalkController {
 
   @Operation(summary = "캠퍼스톡 상세",
       description = "권한 W. 내 건물 글만 (아니면 403). 보낸 사람이 아닌 근로생이 처음 열면 UNREAD → CHECKING, "
-          + "추천 답변은 글 작성 직후 LLM 으로 미리 만들어 저장. 아직 없으면 최대 3초 기다린 뒤 규칙 기반 답변을 주고 "
-          + "(LLM 결과가 늦게 오면 다음에 열 때 보임). 보낸 사람에겐 suggestions 가 빈 배열.")
+          + "추천 답변은 글 작성 후 비동기로 LLM(실패하면 규칙 기반)이 만들어 저장. 상세 조회는 LLM 을 부르지 않는다: "
+          + "저장된 지 30분 이내면 그대로, 아직 없으면 규칙 기반으로 즉시(저장은 비동기 결과가), "
+          + "30분 지났으면 규칙 기반으로 다시 만들어 저장. 보낸 사람에겐 suggestions 가 빈 배열.")
   @GetMapping("/{talkId}")
   public BaseResponse<TalkDetailResponse> detail(
       @Parameter(description = "캠퍼스톡 ID", example = "5") @PathVariable Long talkId) {

@@ -55,6 +55,18 @@ public class Member {
   @Column(name = "alert_lead_minutes")
   private Integer alertLeadMinutes;
 
+  /** 환기 알림 (끄면 alertEnabled 와 상관없이 환기 알림 없음) */
+  @Column(name = "notify_ventilation", nullable = false)
+  private boolean notifyVentilation;
+
+  /** 민원 알림 (새 민원, 반복 민원) */
+  @Column(name = "notify_complaint", nullable = false)
+  private boolean notifyComplaint;
+
+  /** 센서 연결 끊김 알림 */
+  @Column(name = "notify_sensor_error", nullable = false)
+  private boolean notifySensorError;
+
   /** JPA 는 null 도 INSERT 에 넣어 DB DEFAULT 가 안 먹으므로 기본값을 여기서 채운다 (V1 DEFAULT 와 같은 값) */
   public static Member create(String loginId, String encodedPassword, String name, Role role) {
     Member m = new Member();
@@ -69,6 +81,9 @@ public class Member {
     m.humidityMax = 60;
     m.alertEnabled = true;
     m.alertLeadMinutes = 15;
+    m.notifyVentilation = true;
+    m.notifyComplaint = true;
+    m.notifySensorError = true;
     return m;
   }
 
@@ -82,5 +97,22 @@ public class Member {
     if (humidityMax != null) this.humidityMax = humidityMax;
     if (alertEnabled != null) this.alertEnabled = alertEnabled;
     if (alertLeadMinutes != null) this.alertLeadMinutes = alertLeadMinutes;
+  }
+
+  /** 알림 종류별 on/off. null 인 값은 그대로 둔다 (부분 수정) */
+  public void updateNotify(Boolean ventilation, Boolean complaint, Boolean sensorError) {
+    if (ventilation != null) this.notifyVentilation = ventilation;
+    if (complaint != null) this.notifyComplaint = complaint;
+    if (sensorError != null) this.notifySensorError = sensorError;
+  }
+
+  /** 예측 알림(곧 환기) 사용. 컬럼이 null 이면 기본값 켬 */
+  public boolean isAlertOn() {
+    return alertEnabled == null || alertEnabled;
+  }
+
+  /** 기준 초과 몇 분 전에 알릴지. 컬럼이 null 이면 15 */
+  public int alertLeadMinutesOrDefault() {
+    return alertLeadMinutes != null ? alertLeadMinutes : 15;
   }
 }

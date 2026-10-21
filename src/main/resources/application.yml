@@ -43,6 +43,11 @@ sumpyo:
   complaint:
     # 학생 민원 client_hash = SHA-256(clientId + salt). 비어 있으면 민원 접수만 503
     salt: ${COMPLAINT_SALT:}
+    # 민원 QR 내용 = {front-base-url}/complaint?code={room.code}
+    front-base-url: ${FRONT_BASE_URL:http://localhost:5173}
+  notification:
+    # 알림 스캔(환기·곧 환기·센서 끊김) 1분마다. 테스트에서는 끄고 직접 호출
+    scan-enabled: ${NOTIFICATION_SCAN_ENABLED:true}
   llm:
     # 캠퍼스톡 추천 답변. 셋 다 있을 때만 LLM 사용 (gemini | openai | anthropic), 아니면 규칙 기반
     provider: ${LLM_PROVIDER:}
