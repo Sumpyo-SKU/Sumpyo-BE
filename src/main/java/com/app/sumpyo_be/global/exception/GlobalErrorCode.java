@@ -32,6 +32,15 @@ public enum GlobalErrorCode implements BaseErrorCode {
     COMPLAINT_TOO_SOON("G021", "잠시 후 다시 알려주세요", HttpStatus.TOO_MANY_REQUESTS),
     INVALID_COMPLAINT_CONTENT("G022", "민원 상세는 500자까지 쓸 수 있어요", HttpStatus.BAD_REQUEST),
     COMPLAINT_UNAVAILABLE("G023", "지금은 민원을 받을 수 없어요. 잠시 후 다시 시도해주세요", HttpStatus.SERVICE_UNAVAILABLE),
+    // 캠퍼스톡
+    TALK_NO_ZONE("G024", "담당 구역을 먼저 설정해주세요.", HttpStatus.BAD_REQUEST),
+    INVALID_TALK_FLOOR("G025", "층은 1층부터 건물 최고 층 사이여야 합니다.", HttpStatus.BAD_REQUEST),
+    INVALID_TALK_ROOM("G026", "강의실은 내 건물의 선택한 층에 있어야 합니다.", HttpStatus.BAD_REQUEST),
+    DUPLICATED_TALK_FLOOR("G027", "같은 층을 중복해서 보낼 수 없습니다.", HttpStatus.BAD_REQUEST),
+    INVALID_TALK_CONTENT("G028", "내용은 1~300자로 입력해주세요.", HttpStatus.BAD_REQUEST),
+    TALK_NOT_FOUND("G029", "존재하지 않는 캠퍼스톡입니다.", HttpStatus.NOT_FOUND),
+    TALK_ACCESS_DENIED("G030", "내 건물의 캠퍼스톡만 볼 수 있습니다.", HttpStatus.FORBIDDEN),
+    TALK_SELF_REPLY_DENIED("G031", "내가 보낸 캠퍼스톡에는 답할 수 없습니다.", HttpStatus.FORBIDDEN),
     ;
 
     private final String code;
