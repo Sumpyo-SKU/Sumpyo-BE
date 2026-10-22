@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.room.controller;
 
+import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.global.common.BaseResponse;
@@ -36,6 +37,7 @@ public class RoomController {
 
   @Operation(summary = "강의실 상세", description = "평면도 바텀시트·강의실 상세 공용. 현재 CO2·온습도, 쾌적도, 대기 조치, 현재/다음 수업을 반환합니다.")
   @ApiErrors({GlobalErrorCode.ROOM_NOT_FOUND})
+  @Tag(name = ScreenTag.CAMPUS)
   @GetMapping
   public BaseResponse<RoomResponse> room(@Parameter(description = "강의실 ID", example = "7") @PathVariable Long roomId) {
     return BaseResponse.success(roomService.getRoom(roomId));
@@ -49,6 +51,7 @@ public class RoomController {
           + "종료 시각만 기준 이상 → '수업 후반엔 환기가 필요해요', 둘 다 아니면 '수업 내내 쾌적할 거예요'. "
           + "예측은 창문을 닫은 상태 가정이라 condition '창문을 닫아두면'.")
   @ApiErrors(value = {GlobalErrorCode.ROOM_NOT_FOUND}, auth = true)
+  @Tag(name = ScreenTag.HOME)
   @GetMapping("/forecast/next-class")
   public BaseResponse<NextClassForecastResponse> nextClassForecast(
       @Parameter(description = "강의실 ID", example = "7") @PathVariable Long roomId) {
@@ -58,6 +61,7 @@ public class RoomController {
   /** 마지막 측정값 + 센서 연결 여부 */
   @Operation(summary = "최신 측정값", description = "마지막 측정값과 센서 연결 여부(최근 10분 내 측정)를 반환합니다.")
   @ApiErrors({GlobalErrorCode.ROOM_NOT_FOUND})
+  @Tag(name = ScreenTag.HOME)
   @GetMapping("/readings/latest")
   public BaseResponse<LatestReadingResponse> latestReading(@Parameter(description = "강의실 ID", example = "7") @PathVariable Long roomId) {
     return BaseResponse.success(roomService.getLatestReading(roomId));
@@ -66,6 +70,7 @@ public class RoomController {
   /** 그래프 실측. from/to 를 비우면 오늘 0시 ~ 지금, interval(분) 기본 5 */
   @Operation(summary = "실측 그래프", description = "interval 분 평균값 목록. from/to 를 비우면 오늘 0시 ~ 지금, interval 기본 5분(1~60), 최대 31일.")
   @ApiErrors(value = {GlobalErrorCode.INVALID_TIME_RANGE, GlobalErrorCode.ROOM_NOT_FOUND}, validation = true)
+  @Tag(name = ScreenTag.HOME)
   @GetMapping("/readings")
   public BaseResponse<ReadingSeriesResponse> readings(
       @Parameter(description = "강의실 ID", example = "7") @PathVariable Long roomId,
@@ -81,6 +86,7 @@ public class RoomController {
   /** 그래프 예측. from/to 를 비우면 지금 ~ 내일 0시 */
   @Operation(summary = "예측 그래프", description = "시각마다 가장 최근 예측값 목록. from/to 를 비우면 지금 ~ 내일 0시.")
   @ApiErrors(value = {GlobalErrorCode.INVALID_TIME_RANGE, GlobalErrorCode.ROOM_NOT_FOUND}, validation = true)
+  @Tag(name = ScreenTag.HOME)
   @GetMapping("/predictions")
   public BaseResponse<PredictionSeriesResponse> predictions(
       @Parameter(description = "강의실 ID", example = "7") @PathVariable Long roomId,

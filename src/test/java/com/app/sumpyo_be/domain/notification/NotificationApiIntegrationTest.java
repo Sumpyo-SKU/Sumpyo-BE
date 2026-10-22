@@ -455,6 +455,25 @@ class NotificationApiIntegrationTest {
           .andExpect(jsonPath("$.components.schemas.Item").doesNotExist())
           .andExpect(jsonPath("$.components.schemas.PageResponse").doesNotExist());
     }
+
+    @Test
+    void 화면_태그가_맨_위에_리소스_태그도_유지() throws Exception {
+      mvc.perform(get("/v3/api-docs/api"))
+          .andExpect(jsonPath("$.tags[0:7].name", org.hamcrest.Matchers.contains("화면: 홈", "화면: 캠퍼스 현황",
+              "화면: 접수함(민원)", "화면: 캠퍼스톡", "화면: 설정", "화면: 알림", "화면: 학생 민원(QR)")))
+          .andExpect(jsonPath("$.paths['/api/me/rooms'].get.tags", org.hamcrest.Matchers.hasItems("화면: 홈", "Me")))
+          .andExpect(jsonPath("$.paths['/api/notifications/unread-count'].get.tags",
+              org.hamcrest.Matchers.hasItems("화면: 홈", "화면: 알림", "Notification")))
+          .andExpect(jsonPath("$.paths['/api/buildings'].get.tags",
+              org.hamcrest.Matchers.hasItems("화면: 캠퍼스 현황", "화면: 학생 민원(QR)")))
+          .andExpect(jsonPath("$.paths['/api/actions/{actionId}/start'].post.tags",
+              org.hamcrest.Matchers.hasItems("화면: 캠퍼스 현황", "화면: 접수함(민원)", "Action")))
+          .andExpect(jsonPath("$.paths['/api/complaints'].post.tags",
+              org.hamcrest.Matchers.hasItems("화면: 학생 민원(QR)", "Complaint")))
+          .andExpect(jsonPath("$.paths['/api/complaints'].get.tags", org.hamcrest.Matchers.hasItems("화면: 접수함(민원)")))
+          .andExpect(jsonPath("$.paths['/api/me/talk-filter'].put.tags", org.hamcrest.Matchers.hasItems("화면: 캠퍼스톡")))
+          .andExpect(jsonPath("$.paths['/api/rooms/{roomId}/qr/info'].get.tags", org.hamcrest.Matchers.hasItems("화면: 설정")));
+    }
   }
 
   @Nested

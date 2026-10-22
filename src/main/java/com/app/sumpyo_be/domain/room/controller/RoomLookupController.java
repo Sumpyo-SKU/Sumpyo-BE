@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.room.controller;
 
+import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.global.common.PublicApi;
@@ -28,6 +29,7 @@ public class RoomLookupController {
           + "없으면 404 \"호실을 찾을 수 없어요\" (강의실 데이터가 없는 건물도 404).")
   @PublicApi
   @ApiErrors({GlobalErrorCode.INVALID_ROOM_LOOKUP, GlobalErrorCode.ROOM_LOOKUP_NOT_FOUND})
+  @Tag(name = ScreenTag.STUDENT)
   @GetMapping("/api/rooms/lookup")
   public BaseResponse<RoomLookupResponse> lookup(
       @Parameter(description = "강의실 코드 (QR 링크)", example = "bukak-618")

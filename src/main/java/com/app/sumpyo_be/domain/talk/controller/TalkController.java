@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.talk.controller;
 
+import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.global.common.BaseResponse;
@@ -41,6 +42,7 @@ public class TalkController {
           + "처음엔 cursor 없이, 다음부터는 응답의 nextCursor 를 cursor 로 보낸다 (hasNext=false 면 끝). "
           + "counts 는 같은 필터 기준 전체 개수. 담당 구역이 없으면 400.")
   @ApiErrors(value = {GlobalErrorCode.TALK_NO_ZONE}, auth = true, validation = true)
+  @Tag(name = ScreenTag.TALK)
   @GetMapping
   public BaseResponse<TalkListResponse> list(
       @Parameter(description = "탭 (비우면 전체)", example = "UNREAD")
@@ -55,6 +57,7 @@ public class TalkController {
   @Operation(summary = "캠퍼스톡 보내기",
       description = "권한 W. 건물은 내 건물로 자동. floor 필수(1~maxFloor), roomId 선택(내 건물·그 층의 방), content 1~300자. 저장 후 바로 응답하고 추천 답변은 커밋 후 비동기로 만든다.")
   @ApiErrors(value = {GlobalErrorCode.TALK_NO_ZONE, GlobalErrorCode.INVALID_TALK_FLOOR, GlobalErrorCode.INVALID_TALK_ROOM, GlobalErrorCode.INVALID_TALK_CONTENT}, auth = true, validation = true)
+  @Tag(name = ScreenTag.TALK)
   @PostMapping
   public BaseResponse<TalkCreateResponse> create(@Valid @RequestBody TalkCreateRequest request) {
     return BaseResponse.success("캠퍼스톡을 보냈습니다.", talkService.create(request));
@@ -66,6 +69,7 @@ public class TalkController {
           + "저장된 지 30분 이내면 그대로, 아직 없으면 규칙 기반으로 즉시(저장은 비동기 결과가), "
           + "30분 지났으면 규칙 기반으로 다시 만들어 저장. 보낸 사람에겐 suggestions 가 빈 배열.")
   @ApiErrors(value = {GlobalErrorCode.TALK_NO_ZONE, GlobalErrorCode.TALK_ACCESS_DENIED, GlobalErrorCode.TALK_NOT_FOUND}, auth = true)
+  @Tag(name = ScreenTag.TALK)
   @GetMapping("/{talkId}")
   public BaseResponse<TalkDetailResponse> detail(
       @Parameter(description = "캠퍼스톡 ID", example = "5") @PathVariable Long talkId) {
@@ -75,6 +79,7 @@ public class TalkController {
   @Operation(summary = "캠퍼스톡 답변",
       description = "권한 W. 내 건물 글이고 보낸 사람 본인이 아니어야 함 (아니면 403). content 1~300자. 답변이 달리면 ANSWERED.")
   @ApiErrors(value = {GlobalErrorCode.TALK_NO_ZONE, GlobalErrorCode.INVALID_TALK_CONTENT, GlobalErrorCode.TALK_ACCESS_DENIED, GlobalErrorCode.TALK_SELF_REPLY_DENIED, GlobalErrorCode.TALK_NOT_FOUND}, auth = true, validation = true)
+  @Tag(name = ScreenTag.TALK)
   @PostMapping("/{talkId}/replies")
   public BaseResponse<TalkReplyResponse> reply(
       @Parameter(description = "캠퍼스톡 ID", example = "5") @PathVariable Long talkId,
