@@ -89,6 +89,13 @@ public class Complaint {
     return Arrays.stream(categories.split(",")).map(ComplaintCategory::valueOf).toList();
   }
 
+  /** 연결된 조치를 시작하면 처리 중 */
+  public void startProcessing() {
+    if (status == ComplaintStatus.RECEIVED) {
+      this.status = ComplaintStatus.IN_PROGRESS;
+    }
+  }
+
   /** 연결된 조치가 완료되면 민원도 완료 */
   public void done() {
     this.status = ComplaintStatus.DONE;

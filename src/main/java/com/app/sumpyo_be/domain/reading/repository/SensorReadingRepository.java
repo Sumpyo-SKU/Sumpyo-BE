@@ -43,6 +43,20 @@ public interface SensorReadingRepository extends JpaRepository<SensorReading, Lo
       """)
   List<LastMeasured> findLastMeasuredAt(@Param("roomIds") Collection<Long> roomIds);
 
+  /** [from, to] 구간의 가장 늦은 측정 (조치 결과 CO2) */
+  Optional<SensorReading> findFirstByRoomIdAndMeasuredAtBetweenOrderByMeasuredAtDesc(Long roomId,
+      LocalDateTime from, LocalDateTime to);
+
+  /** [from, to) 날짜별 최고 CO2 (KST 날짜, measured_at 이 KST). 행: [날짜, 최고 CO2] */
+  @Query(value = """
+      select cast(measured_at as date) as day, max(co2) as max_co2
+      from sensor_reading
+      where room_id = :roomId and measured_at >= :from and measured_at < :to and co2 is not null
+      group by cast(measured_at as date)
+      """, nativeQuery = true)
+  List<Object[]> findDailyMaxCo2(@Param("roomId") Long roomId, @Param("from") LocalDateTime from,
+      @Param("to") LocalDateTime to);
+
   /** CO2 가 기준 미만이었던 마지막 측정 시각. 한 번도 없으면 null */
   @Query("select max(r.measuredAt) from SensorReading r where r.room.id = :roomId and r.co2 < :threshold")
   LocalDateTime findLastBelow(@Param("roomId") Long roomId, @Param("threshold") int threshold);

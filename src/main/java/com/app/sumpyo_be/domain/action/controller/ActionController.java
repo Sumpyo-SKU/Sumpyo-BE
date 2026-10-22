@@ -4,6 +4,8 @@ import com.app.sumpyo_be.domain.action.dto.ActionCompleteResponse;
 import com.app.sumpyo_be.domain.action.dto.ActionListItem;
 import com.app.sumpyo_be.domain.action.dto.ActionStartResponse;
 import com.app.sumpyo_be.domain.action.dto.ActionStatusResponse;
+import com.app.sumpyo_be.domain.action.dto.ActionStepRequest;
+import com.app.sumpyo_be.domain.action.dto.ComplaintActionResponse;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.service.ActionService;
 import com.app.sumpyo_be.global.common.BaseResponse;
@@ -11,11 +13,13 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,13 +60,27 @@ public class ActionController {
     return BaseResponse.success("확인 처리되었습니다.", actionService.check(actionId));
   }
 
-  @Operation(summary = "환기 시작", description = "PENDING/CHECKED → IN_PROGRESS. 시작 시점 CO2 와 처리자를 기록합니다.")
+  @Operation(summary = "환기 시작 / 추천대로 처리 시작",
+      description = "PENDING/CHECKED → IN_PROGRESS. 시작 시점 CO2 와 처리자를 기록합니다. 민원 조치면 민원도 IN_PROGRESS. "
+          + "민원 추천 조치는 창문 시각을 찍지 않고 체크리스트(PATCH /steps)로 기록하며, 단계가 없는 추천(시설팀 신고)은 바로 완료됩니다.")
   @PostMapping("/{actionId}/start")
   public BaseResponse<ActionStartResponse> start(@Parameter(description = "조치 ID", example = "88") @PathVariable Long actionId) {
     return BaseResponse.success("환기를 시작했습니다.", actionService.start(actionId));
   }
 
-  @Operation(summary = "조치 완료", description = "IN_PROGRESS → DONE. 완료 시점 CO2 로 목표 달성 여부를 계산하고, 연결된 민원도 완료 처리합니다.")
+  @Operation(summary = "체크리스트 단계 완료",
+      description = "민원 추천 조치의 체크리스트. IN_PROGRESS 조치만(아니면 409), plan 에 있는 단계만(아니면 400), "
+          + "이미 체크했으면 그대로 200. WINDOW_OPEN → window_opened_at, WINDOW_CLOSE → window_closed_at, "
+          + "AC_ON → ac_on_at + 희망 온도. 모든 단계를 마치면 자동 완료(조치·민원 DONE). "
+          + "결과 CO2 는 창문 단계가 있으면 measureAt(창문 연 시각 + 추천 분)에 서버가 재고, 그 전까지 actualCo2After·goalReached 는 null.")
+  @PatchMapping("/{actionId}/steps")
+  public BaseResponse<ComplaintActionResponse> checkStep(
+      @Parameter(description = "조치 ID", example = "120") @PathVariable Long actionId,
+      @Valid @RequestBody ActionStepRequest request) {
+    return BaseResponse.success(actionService.checkStep(actionId, request));
+  }
+
+  @Operation(summary = "조치 완료", description = "예측 조치용. IN_PROGRESS → DONE. 완료 시점 CO2 로 목표 달성 여부를 계산하고, 연결된 민원도 완료 처리합니다.")
   @PostMapping("/{actionId}/complete")
   public BaseResponse<ActionCompleteResponse> complete(@Parameter(description = "조치 ID", example = "88") @PathVariable Long actionId) {
     return BaseResponse.success("조치를 완료했습니다.", actionService.complete(actionId));

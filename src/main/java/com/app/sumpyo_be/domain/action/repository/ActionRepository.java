@@ -53,6 +53,24 @@ public interface ActionRepository extends JpaRepository<Action, Long> {
 
   boolean existsByRoomIdAndRecommendAndStatus(Long roomId, Recommend recommend, ActionStatus status);
 
+  /** 민원에 연결된 가장 최근 조치 */
+  Optional<Action> findTopByComplaintIdOrderByCreatedAtDescIdDesc(Long complaintId);
+
+  /** 민원에 연결된 대기 중(PENDING·CHECKED) 조치 */
+  Optional<Action> findTopByComplaintIdAndStatusInOrderByCreatedAtDescIdDesc(Long complaintId,
+      Collection<ActionStatus> statuses);
+
+  /** 이 방에 창문을 열어 둔(환기 중, 아직 안 닫은) 조치가 있는지 */
+  boolean existsByRoomIdAndStatusAndWindowOpenedAtIsNotNullAndWindowClosedAtIsNull(Long roomId, ActionStatus status);
+
+  /** 결과 CO2 를 잴 때가 된 완료 조치 (since 이후 measure_at 만 → 센서가 끊겨 못 재면 결국 포기) */
+  @Query("""
+      select a from Action a join fetch a.room
+      where a.status = com.app.sumpyo_be.domain.action.entity.ActionStatus.DONE
+        and a.actualCo2After is null and a.measureAt <= :now and a.measureAt > :since
+      """)
+  List<Action> findMeasureDue(@Param("now") LocalDateTime now, @Param("since") LocalDateTime since);
+
   @Query("select distinct a.room.id from Action a where a.room.id in :roomIds and a.status = :status")
   List<Long> findRoomIdsByStatus(@Param("roomIds") Collection<Long> roomIds, @Param("status") ActionStatus status);
 }
