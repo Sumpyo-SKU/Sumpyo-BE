@@ -114,6 +114,10 @@ public class Action {
   @Column(name = "measure_at")
   private LocalDateTime measureAt;
 
+  /** 추천 당시 그대로 두면 예상 CO2 (수업 종료 시각, 수업이 없으면 30분 뒤). 예측이 없으면 null */
+  @Column(name = "forecast_co2")
+  private Integer forecastCo2;
+
   /** 요약 문구 (비 예보 창문 닫기) */
   public static final String RAIN_CLOSE_SUMMARY = "비 예상 · 창문 닫기";
 
@@ -144,20 +148,21 @@ public class Action {
   /** 민원 추천 조치 (PENDING). 숫자(co2Before, expectedCo2After, 창문 분)는 서버가 계산한 값 */
   public static Action complaintPlan(Room room, Long complaintId, Recommend recommend, Metric metric,
       String summary, String reason, String planJson, PlanSource planSource, Integer co2Before,
-      Integer expectedCo2After, Integer acTargetTemp, LocalDateTime now) {
+      Integer expectedCo2After, Integer forecastCo2, Integer acTargetTemp, LocalDateTime now) {
     Action a = new Action();
     a.room = room;
     a.source = ActionSource.COMPLAINT;
     a.complaintId = complaintId;
     a.status = ActionStatus.PENDING;
     a.createdAt = now;
-    a.replacePlan(recommend, metric, summary, reason, planJson, planSource, co2Before, expectedCo2After, acTargetTemp);
+    a.replacePlan(recommend, metric, summary, reason, planJson, planSource, co2Before, expectedCo2After, forecastCo2,
+        acTargetTemp);
     return a;
   }
 
   /** [다른 방법] 대기 중인 민원 조치의 추천을 새 추천으로 바꾼다 */
   public void replacePlan(Recommend recommend, Metric metric, String summary, String reason, String planJson,
-      PlanSource planSource, Integer co2Before, Integer expectedCo2After, Integer acTargetTemp) {
+      PlanSource planSource, Integer co2Before, Integer expectedCo2After, Integer forecastCo2, Integer acTargetTemp) {
     if (!status.isWaiting()) {
       throw new IllegalStateException("대기 중인 조치만 바꿀 수 있음: " + status);
     }
@@ -169,6 +174,7 @@ public class Action {
     this.planSource = planSource;
     this.co2Before = co2Before;
     this.expectedCo2After = expectedCo2After;
+    this.forecastCo2 = forecastCo2;
     this.acTargetTemp = acTargetTemp;
   }
 

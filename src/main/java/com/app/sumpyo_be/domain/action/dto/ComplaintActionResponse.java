@@ -40,8 +40,13 @@ public class ComplaintActionResponse {
   @Schema(description = "조치 전 CO2 (ppm). 추천 때 현재 값(없으면 접수 스냅샷), 처리 시작 때 다시 잰 값", example = "1250")
   private Integer co2Before;
 
-  @Schema(description = "예상 CO2 (ppm). 창문 단계가 있을 때만 (420 + (C−420)·e^(−k·분/60)), 아니면 null", example = "757")
+  @Schema(description = "예상 CO2 (ppm). 창문 단계가 있을 때만 (420 + (C−420)·e^(−k·분/60), C = 현재와 30분 뒤 예측 중 큰 값), "
+      + "아니면 null", example = "779")
   private Integer expectedCo2After;
+
+  @Schema(description = "그대로 두면 예상 CO2 (ppm, predict.py 예측: 수업 종료 시각, 수업이 없으면 30분 뒤). 예측이 없으면 null. "
+      + "화면 '그대로 두면 1,280ppm'", example = "1280")
+  private Integer forecastCo2;
 
   @Schema(description = "체크리스트 (추천 순서). doneAt 이 있으면 완료")
   private List<Step> steps;

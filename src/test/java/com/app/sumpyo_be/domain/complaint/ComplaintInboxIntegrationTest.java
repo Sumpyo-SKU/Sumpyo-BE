@@ -167,6 +167,12 @@ class ComplaintInboxIntegrationTest {
         roomId, co2, temp, humidity, at);
   }
 
+  private void prediction(long roomId, LocalDateTime targetAt, int co2, LocalDateTime createdAt) {
+    jdbc.update("""
+        insert into prediction (room_id, created_at, target_at, co2, temp, humidity, model_version)
+        values (?, ?, ?, ?, 23, 50, 'inbox-test')""", roomId, createdAt, targetAt, co2);
+  }
+
   private ResultActions recommend(long complaintId, boolean retry) throws Exception {
     return as(W1, post("/api/complaints/{id}/recommendation", complaintId), retry ? "{\"retry\":true}" : "{}");
   }
@@ -467,6 +473,48 @@ class ComplaintInboxIntegrationTest {
       recommend(id, true)
           .andExpect(jsonPath("$.data.steps[0].windows").value(4))
           .andExpect(jsonPath("$.data.source").value("RULE"));
+    }
+
+    @Test
+    void ML_예측을_프롬프트에_넘기고_오르는_중이면_예측값부터_계산() throws Exception {
+      reading(r618, 1100, 22, 50, NOW.minusMinutes(1));
+      jdbc.update("""
+          insert into class_schedule (room_id, course_name, day_of_week, start_time, end_time, semester)
+          values (?, '데이터크롤링', 3, '13:30', '14:45', 'inbox-test')""", r618);
+      prediction(r618, NOW.plusMinutes(30), 1150, NOW.minusMinutes(20));   // 예전 예측 (같은 시각)
+      prediction(r618, NOW.plusMinutes(30), 1180, NOW.minusMinutes(5));    // 최신 예측
+      prediction(r618, NOW.plusMinutes(45), 1280, NOW.minusMinutes(5));    // 수업 종료 14:45
+      when(llmClient.complete(anyString())).thenReturn("""
+          {"steps":[{"type":"WINDOW_OPEN","windows":2}],"summary":"창문을 열어주세요","reason":"CO2가 오르는 중이에요"}""");
+      long id = complaint(r618, "STUFFY", null, "RECEIVED", NOW.minusMinutes(5));
+
+      // 시작값 1180 (현재 1100 보다 큼) → 25분, 420 + 760·e^(−0.75) = 779
+      recommend(id, false)
+          .andExpect(jsonPath("$.data.co2Before").value(1100))
+          .andExpect(jsonPath("$.data.forecastCo2").value(1280))
+          .andExpect(jsonPath("$.data.steps[0].minutes").value(25))
+          .andExpect(jsonPath("$.data.expectedCo2After").value(779))
+          .andExpect(jsonPath("$.data.summary").value("창문 2곳을 25분 열어주세요"));
+      ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+      verify(llmClient).complete(prompt.capture());
+      assertThat(prompt.getValue()).contains("그대로 두면 30분 뒤 1,180ppm, 수업 종료 시 1,280ppm 예상");
+      as(W1, get("/api/complaints/{id}", id)).andExpect(jsonPath("$.data.action.forecastCo2").value(1280));
+    }
+
+    @Test
+    void 예측이_내려가는_중이거나_없으면_현재_CO2_로_계산_forecastCo2_는_null() throws Exception {
+      reading(r618, 1250, 22, 50, NOW.minusMinutes(1));
+      prediction(r618, NOW.plusMinutes(30), 1100, NOW.minusMinutes(5));
+      long falling = complaint(r618, "STUFFY", null, "RECEIVED", NOW.minusMinutes(5));
+      recommend(falling, false)
+          .andExpect(jsonPath("$.data.expectedCo2After").value(757))   // 1250 에서 시작
+          .andExpect(jsonPath("$.data.forecastCo2").value(1100));        // 수업이 없으면 30분 뒤
+
+      jdbc.update("delete from prediction");
+      long none = complaint(r618, "STUFFY", null, "RECEIVED", NOW.minusMinutes(4));
+      recommend(none, false)
+          .andExpect(jsonPath("$.data.expectedCo2After").value(757))
+          .andExpect(jsonPath("$.data.forecastCo2").value(nullValue()));
     }
 
     @Test

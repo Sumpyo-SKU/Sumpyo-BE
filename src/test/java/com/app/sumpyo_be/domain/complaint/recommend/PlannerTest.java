@@ -29,7 +29,41 @@ class PlannerTest {
   private static PlanContext ctx(ComplaintCategory category, Integer co2, Integer temp, Integer humidity,
       Double outTemp, Integer outHumidity, boolean rain, boolean windowOpen, PlanContext.Previous previous) {
     return new PlanContext(List.of(category), null, co2, temp, humidity, T, outTemp, outHumidity, null, rain,
-        windowOpen, null, null, previous);
+        windowOpen, null, null, null, null, previous);
+  }
+
+  private static PlanContext withForecast(Integer co2, Integer co2In30, Integer co2AtClassEnd) {
+    return new PlanContext(List.of(ComplaintCategory.STUFFY), null, co2, 24, 50, T, null, null, null, false,
+        false, null, null, co2In30, co2AtClassEnd, null);
+  }
+
+  @Nested
+  class Forecast {
+
+    @Test
+    void 시작값은_현재와_30분_뒤_예측_중_큰_값_예측이_없으면_현재() {
+      assertThat(withForecast(1100, 1180, null).startCo2()).isEqualTo(1180);   // 오르는 중
+      assertThat(withForecast(1250, 1100, null).startCo2()).isEqualTo(1250);   // 내려가는 중
+      assertThat(withForecast(1100, null, null).startCo2()).isEqualTo(1100);
+      assertThat(withForecast(null, 1180, null).startCo2()).isEqualTo(1180);
+    }
+
+    @Test
+    void 그대로_두면_값은_수업_종료_없으면_30분_뒤() {
+      assertThat(withForecast(1100, 1180, 1280).forecastCo2()).isEqualTo(1280);
+      assertThat(withForecast(1100, 1180, null).forecastCo2()).isEqualTo(1180);
+      assertThat(withForecast(1100, null, null).forecastCo2()).isNull();
+    }
+
+    @Test
+    void 프롬프트_문구() {
+      assertThat(LlmPlanner.forecastLine(withForecast(1100, 1180, 1280)))
+          .isEqualTo("그대로 두면 30분 뒤 1,180ppm, 수업 종료 시 1,280ppm 예상");
+      assertThat(LlmPlanner.forecastLine(withForecast(1100, 1180, null))).isEqualTo("그대로 두면 30분 뒤 1,180ppm 예상");
+      assertThat(LlmPlanner.forecastLine(withForecast(1100, null, null))).isNull();
+      assertThat(LlmPlanner.prompt(withForecast(1100, 1180, 1280)))
+          .contains("그대로 두면 30분 뒤 1,180ppm, 수업 종료 시 1,280ppm 예상");
+    }
   }
 
   @Nested

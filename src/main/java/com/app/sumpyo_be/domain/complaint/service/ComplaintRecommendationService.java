@@ -27,6 +27,7 @@ import com.app.sumpyo_be.domain.member.service.ThresholdService;
 import com.app.sumpyo_be.domain.outdoor.entity.OutdoorObservation;
 import com.app.sumpyo_be.domain.outdoor.repository.OutdoorObservationRepository;
 import com.app.sumpyo_be.domain.outdoor.service.RainForecast;
+import com.app.sumpyo_be.domain.prediction.service.PredictionLookup;
 import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.schedule.entity.ClassSchedule;
@@ -57,6 +58,8 @@ public class ComplaintRecommendationService {
   /** 바깥 공기 관측이 이보다 오래되면 쓰지 않는다 */
   static final Duration OUTDOOR_FRESH = Duration.ofHours(3);
   static final Duration RAIN_WITHIN = Duration.ofHours(1);
+  /** "그대로 두면 30분 뒤" 예측 */
+  static final Duration FORECAST_AHEAD = Duration.ofMinutes(30);
   private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
   private final MemberAccess memberAccess;
@@ -65,6 +68,7 @@ public class ComplaintRecommendationService {
   private final SensorReadingRepository readingRepository;
   private final OutdoorObservationRepository outdoorRepository;
   private final RainForecast rainForecast;
+  private final PredictionLookup predictionLookup;
   private final ClassScheduleService classScheduleService;
   private final ThresholdService thresholdService;
   private final LlmPlanner llmPlanner;
@@ -95,10 +99,11 @@ public class ComplaintRecommendationService {
     RawPlan raw = byLlm.orElseGet(() -> rulePlanner.plan(ctx));
     PlanSource source = byLlm.isPresent() ? PlanSource.LLM : PlanSource.RULE;
 
-    List<PlanStep> steps = PlanCalculator.complete(raw.steps(), ctx.co2());
+    // 창문 분·예상 효과는 현재와 30분 뒤 예측 중 큰 값에서 시작 (오르는 중이면 미리 반영)
+    List<PlanStep> steps = PlanCalculator.complete(raw.steps(), ctx.startCo2());
     String summary = PlanCalculator.summary(raw.summary(), steps);
     String reason = PlanCalculator.stripNumbers(raw.reason());
-    Integer expected = PlanCalculator.expectedCo2After(steps, ctx.co2());
+    Integer expected = PlanCalculator.expectedCo2After(steps, ctx.startCo2());
     Recommend recommend = PlanCalculator.windowOpen(steps).isPresent() ? Recommend.OPEN : Recommend.CLOSE;
     Metric metric = metric(ctx);
     Integer acTemp = steps.stream().filter(s -> s.type() == StepType.AC_ON).map(PlanStep::targetTemp)
@@ -108,10 +113,11 @@ public class ComplaintRecommendationService {
     Action action;
     if (waiting.isPresent()) {
       action = waiting.get();
-      action.replacePlan(recommend, metric, summary, reason, plan, source, ctx.co2(), expected, acTemp);
+      action.replacePlan(recommend, metric, summary, reason, plan, source, ctx.co2(), expected, ctx.forecastCo2(),
+          acTemp);
     } else {
       action = actionRepository.save(Action.complaintPlan(complaint.getRoom(), complaintId, recommend, metric,
-          summary, reason, plan, source, ctx.co2(), expected, acTemp, now));
+          summary, reason, plan, source, ctx.co2(), expected, ctx.forecastCo2(), acTemp, now));
     }
     return assembler.toResponse(action);
   }
@@ -131,6 +137,10 @@ public class ComplaintRecommendationService {
         .filter(o -> o.getObservedAt().isAfter(now.minus(OUTDOOR_FRESH))).orElse(null);
     CurrentAndNext cn = ClassScheduleService.currentAndNext(
         classScheduleService.classesOn(roomId, now.toLocalDate()), now.toLocalTime());
+    ClassSchedule targetClass = cn.current() != null ? cn.current() : cn.next();
+    Integer co2In30 = predictionLookup.co2At(roomId, now.plus(FORECAST_AHEAD)).orElse(null);
+    Integer co2AtClassEnd = targetClass == null ? null
+        : predictionLookup.co2At(roomId, now.toLocalDate().atTime(targetClass.getEndTime())).orElse(null);
     return new PlanContext(c.getCategoryList(), c.getContent(), co2, temp, humidity, t,
         outdoor == null || outdoor.getTemp() == null ? null : outdoor.getTemp().doubleValue(),
         outdoor == null ? null : outdoor.getHumidity(),
@@ -138,7 +148,7 @@ public class ComplaintRecommendationService {
         rainForecast.firstRainWithin(now, RAIN_WITHIN).isPresent(),
         actionRepository.existsByRoomIdAndStatusAndWindowOpenedAtIsNotNullAndWindowClosedAtIsNull(roomId,
             ActionStatus.IN_PROGRESS),
-        classLabel(cn.current(), true), classLabel(cn.next(), false), previous);
+        classLabel(cn.current(), true), classLabel(cn.next(), false), co2In30, co2AtClassEnd, previous);
   }
 
   private static String classLabel(ClassSchedule c, boolean current) {

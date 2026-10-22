@@ -4,8 +4,7 @@ import com.app.sumpyo_be.domain.air.AirQualityJudge;
 import com.app.sumpyo_be.domain.member.entity.Role;
 import com.app.sumpyo_be.domain.member.service.MemberAccess;
 import com.app.sumpyo_be.domain.member.service.ThresholdService;
-import com.app.sumpyo_be.domain.prediction.entity.Prediction;
-import com.app.sumpyo_be.domain.prediction.repository.PredictionRepository;
+import com.app.sumpyo_be.domain.prediction.service.PredictionLookup;
 import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.room.dto.NextClassForecastResponse;
@@ -16,10 +15,8 @@ import com.app.sumpyo_be.domain.schedule.service.ClassScheduleService.CurrentAnd
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,8 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class RoomForecastService {
 
-  /** 수업 시작·종료 시각에서 이만큼 안에 있는 예측 중 가장 가까운 것 (5분 간격이라 보통 2분 30초 안) */
-  static final Duration PREDICTION_MATCH = Duration.ofMinutes(10);
   static final String CONDITION = "창문을 닫아두면";
   static final String BEFORE_CLASS = "수업 전에 환기가 필요해요";
   static final String LATE_IN_CLASS = "수업 후반엔 환기가 필요해요";
@@ -46,7 +41,7 @@ public class RoomForecastService {
   private final MemberAccess memberAccess;
   private final RoomRepository roomRepository;
   private final ClassScheduleService classScheduleService;
-  private final PredictionRepository predictionRepository;
+  private final PredictionLookup predictionLookup;
   private final SensorReadingRepository readingRepository;
   private final ThresholdService thresholdService;
   private final Clock clock;
@@ -86,16 +81,8 @@ public class RoomForecastService {
         .build();
   }
 
-  /** at ±10분 안의 예측 중 가장 가까운 것의 CO2 (같은 target_at 이면 created_at 최신). 같은 거리면 앞쪽 */
   private Integer nearestPrediction(Long roomId, LocalDateTime at) {
-    List<Prediction> candidates = predictionRepository.findLatestForChart(roomId,
-        at.minus(PREDICTION_MATCH), at.plus(PREDICTION_MATCH).plusNanos(1));
-    return candidates.stream()
-        .filter(p -> p.getCo2() != null)
-        .min(Comparator.comparing((Prediction p) -> Duration.between(p.getTargetAt(), at).abs())
-            .thenComparing(Prediction::getTargetAt))
-        .map(Prediction::getCo2)
-        .orElse(null);
+    return predictionLookup.co2At(roomId, at).orElse(null);
   }
 
   private Integer currentCo2(Long roomId, LocalDateTime now) {

@@ -28,6 +28,7 @@ public class ComplaintActionAssembler {
         .source(a.getPlanSource())
         .co2Before(a.getCo2Before())
         .expectedCo2After(a.getExpectedCo2After())
+        .forecastCo2(a.getForecastCo2())
         .steps(steps(a))
         .completedAt(a.getCompletedAt())
         .measureAt(a.getMeasureAt())

@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -97,6 +98,10 @@ public class LlmPlanner {
     sb.append('\n');
     sb.append("실내: CO2 ").append(orUnknown(ctx.co2(), "ppm")).append(", 온도 ").append(orUnknown(ctx.temp(), "°C"))
         .append(", 습도 ").append(orUnknown(ctx.humidity(), "%")).append('\n');
+    String forecast = forecastLine(ctx);
+    if (forecast != null) {
+      sb.append(forecast).append('\n');
+    }
     sb.append("적정: CO2 ").append(ctx.thresholds().co2()).append("ppm 미만, 온도 ").append(ctx.thresholds().tempMin())
         .append("~").append(ctx.thresholds().tempMax()).append("°C, 습도 ").append(ctx.thresholds().humidityMin())
         .append("~").append(ctx.thresholds().humidityMax()).append("%\n");
@@ -113,6 +118,18 @@ public class LlmPlanner {
           .append(")\n");
     }
     return sb.toString();
+  }
+
+  /** "그대로 두면 30분 뒤 1,180ppm, 수업 종료 시 1,280ppm 예상" (창문 닫힌 상태 예측). 예측이 없으면 null */
+  static String forecastLine(PlanContext ctx) {
+    List<String> parts = new ArrayList<>();
+    if (ctx.co2In30() != null) {
+      parts.add("30분 뒤 " + String.format(Locale.KOREA, "%,d", ctx.co2In30()) + "ppm");
+    }
+    if (ctx.co2AtClassEnd() != null) {
+      parts.add("수업 종료 시 " + String.format(Locale.KOREA, "%,d", ctx.co2AtClassEnd()) + "ppm");
+    }
+    return parts.isEmpty() ? null : "그대로 두면 " + String.join(", ", parts) + " 예상";
   }
 
   private static String orUnknown(Object value, String unit) {
