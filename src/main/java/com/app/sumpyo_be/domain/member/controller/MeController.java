@@ -1,6 +1,7 @@
 package com.app.sumpyo_be.domain.member.controller;
 
 import com.app.sumpyo_be.global.common.BaseResponse;
+import com.app.sumpyo_be.domain.member.dto.MyRoomResponse;
 import com.app.sumpyo_be.domain.member.dto.SettingsResponse;
 import com.app.sumpyo_be.domain.member.dto.SettingsUpdateRequest;
 import com.app.sumpyo_be.domain.member.dto.ZoneRequest;
@@ -25,6 +26,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
 
   private final MeService meService;
+
+  @Operation(summary = "내 강의실 (홈 방 선택)",
+      description = "권한 W. 내 담당 구역(건물+층)의 센서 있는 강의실(LECTURE, FULL·SIM). 건물 순서 → 층 → 호수. "
+          + "선택 상태는 프론트가 기억. 빈 배열이면 담당 구역 설정으로 안내.")
+  @GetMapping("/rooms")
+  public BaseResponse<List<MyRoomResponse>> rooms() {
+    return BaseResponse.success(meService.getMyRooms());
+  }
 
   /** 권한 W. 비어 있으면 [] → 온보딩 표시 */
   @Operation(summary = "내 담당 구역 조회", description = "권한 W. 담당 구역이 없으면 [] 이고, 이때 프론트는 온보딩을 띄웁니다.")

@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.app.sumpyo_be.domain.outdoor.service.OutdoorCollector;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import com.app.sumpyo_be.domain.room.entity.RoomType;
 import com.app.sumpyo_be.domain.room.entity.SensorLevel;
@@ -39,6 +40,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @SpringBootTest(properties = {
     "sumpyo.simulator.enabled=false",
     "sumpyo.notification.scan-enabled=false",
+    // 로컬 .env 에 공공데이터 키가 있어도 외부 API 를 부르지 않도록
+    "sumpyo.outdoor.collect-enabled=false", "sumpyo.action.rain-close-enabled=false", "sumpyo.outdoor.api-key=",
     "sumpyo.demo.password=test-demo-password",
     "DB_USERNAME=unused", "DB_PASSWORD=unused", "DEVICE_KEY_517=test-device-key"
 })
@@ -53,6 +56,7 @@ class MeApiIntegrationTest {
   @Autowired MockMvc mvc;
   @Autowired JdbcTemplate jdbc;
   @Autowired RoomRepository roomRepository;
+  @Autowired OutdoorCollector outdoorCollector;
 
   long bukak;    // 북악관 (max 7)
   long hyein;    // 혜인관 (max 5)
@@ -120,6 +124,14 @@ class MeApiIntegrationTest {
         .andExpect(jsonPath("$.data.rooms[8].type").value("ETC"))
         .andExpect(jsonPath("$.data.rooms[13].type").value("ETC"))
         .andExpect(jsonPath("$.data.rooms[13].status").value("NO_SENSOR"));
+  }
+
+  @Test
+  void 공공데이터_키가_없으면_수집을_건너뛰고_바깥_공기는_null() throws Exception {
+    assertThat(outdoorCollector.collect(LocalDateTime.now())).isFalse();
+    mvc.perform(get("/api/outdoor/latest"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data").value(nullValue()));
   }
 
   @Test
@@ -307,6 +319,9 @@ class MeApiIntegrationTest {
 
     @Test
     void 명세_형식과_expectedAt_오름차순() throws Exception {
+      // 실제 시각 기준 테스트라 시드 시간표가 있으면 title 이 '수업 전에 열어두세요' 로 바뀔 수 있어 수업을 뺀다
+      jdbc.update("delete from class_cancellation");
+      jdbc.update("delete from class_schedule");
       insertAction("bukak-617", "PREDICTION", "OPEN", 45);
       insertAction("bukak-618", "PREDICTION", "CLOSE", -5);
       insertAction("bukak-608", "PREDICTION", "OPEN", 20);
@@ -314,7 +329,7 @@ class MeApiIntegrationTest {
       mvc.perform(get("/api/actions"))
           .andExpect(jsonPath("$.data[*].room", contains("북악관 618호", "북악관 608호", "북악관 617호")))
           .andExpect(jsonPath("$.data[0].timing").value("NOW"))
-          .andExpect(jsonPath("$.data[0].title").value("창문 닫아주세요"))
+          .andExpect(jsonPath("$.data[0].title").value("창문을 닫아주세요"))
           .andExpect(jsonPath("$.data[0].reason").value("기준 초과"))
           .andExpect(jsonPath("$.data[1].timing").value("SOON"))
           .andExpect(jsonPath("$.data[1].title").value("창문 열어주세요"))

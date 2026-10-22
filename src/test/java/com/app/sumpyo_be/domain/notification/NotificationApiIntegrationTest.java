@@ -55,6 +55,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @SpringBootTest(properties = {
     "sumpyo.simulator.enabled=false",
     "sumpyo.notification.scan-enabled=false",
+    // 로컬 .env 에 공공데이터 키가 있어도 외부 API 를 부르지 않도록
+    "sumpyo.outdoor.collect-enabled=false", "sumpyo.action.rain-close-enabled=false", "sumpyo.outdoor.api-key=",
     "sumpyo.demo.password=test-demo-password",
     "sumpyo.demo.header-login=true",
     "sumpyo.complaint.salt=test-salt",

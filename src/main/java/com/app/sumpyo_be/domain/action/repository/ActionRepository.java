@@ -3,6 +3,8 @@ package com.app.sumpyo_be.domain.action.repository;
 import com.app.sumpyo_be.domain.action.entity.Action;
 import com.app.sumpyo_be.domain.action.entity.ActionSource;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
+import com.app.sumpyo_be.domain.action.entity.Recommend;
+import com.app.sumpyo_be.domain.room.entity.Room;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -41,6 +43,33 @@ public interface ActionRepository extends JpaRepository<Action, Long> {
       """)
   List<Action> findExpectedBetween(@Param("source") ActionSource source, @Param("status") ActionStatus status,
       @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+  /** 창문이 열린 방: 환기 중(IN_PROGRESS)이고 아직 창문을 닫지 않은 조치가 있는 방 */
+  @Query("""
+      select distinct r from Action a join a.room r
+      where a.status = com.app.sumpyo_be.domain.action.entity.ActionStatus.IN_PROGRESS and a.windowClosedAt is null
+      """)
+  List<Room> findRoomsWithOpenWindow();
+
+  boolean existsByRoomIdAndRecommendAndStatus(Long roomId, Recommend recommend, ActionStatus status);
+
+  /** 민원에 연결된 가장 최근 조치 */
+  Optional<Action> findTopByComplaintIdOrderByCreatedAtDescIdDesc(Long complaintId);
+
+  /** 민원에 연결된 대기 중(PENDING·CHECKED) 조치 */
+  Optional<Action> findTopByComplaintIdAndStatusInOrderByCreatedAtDescIdDesc(Long complaintId,
+      Collection<ActionStatus> statuses);
+
+  /** 이 방에 창문을 열어 둔(환기 중, 아직 안 닫은) 조치가 있는지 */
+  boolean existsByRoomIdAndStatusAndWindowOpenedAtIsNotNullAndWindowClosedAtIsNull(Long roomId, ActionStatus status);
+
+  /** 결과 CO2 를 잴 때가 된 완료 조치 (since 이후 measure_at 만 → 센서가 끊겨 못 재면 결국 포기) */
+  @Query("""
+      select a from Action a join fetch a.room
+      where a.status = com.app.sumpyo_be.domain.action.entity.ActionStatus.DONE
+        and a.actualCo2After is null and a.measureAt <= :now and a.measureAt > :since
+      """)
+  List<Action> findMeasureDue(@Param("now") LocalDateTime now, @Param("since") LocalDateTime since);
 
   @Query("select distinct a.room.id from Action a where a.room.id in :roomIds and a.status = :status")
   List<Long> findRoomIdsByStatus(@Param("roomIds") Collection<Long> roomIds, @Param("status") ActionStatus status);

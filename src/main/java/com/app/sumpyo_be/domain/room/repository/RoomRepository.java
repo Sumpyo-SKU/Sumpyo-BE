@@ -19,6 +19,18 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
 
   List<Room> findBySensorLevelAndType(SensorLevel sensorLevel, RoomType type);
 
+  /** 담당 구역(건물+층)의 센서 있는 강의실. 건물 표시 순서 → 층 → 호수 */
+  @Query("""
+      select r from Room r join fetch r.building b
+      where r.type = com.app.sumpyo_be.domain.room.entity.RoomType.LECTURE
+        and r.sensorLevel in (com.app.sumpyo_be.domain.room.entity.SensorLevel.FULL,
+                              com.app.sumpyo_be.domain.room.entity.SensorLevel.SIM)
+        and exists (select 1 from MemberZone z
+                    where z.memberId = :memberId and z.building = b and z.floor = r.floor)
+      order by b.displayOrder, r.floor, r.number
+      """)
+  List<Room> findSensorLecturesInMemberZones(@Param("memberId") Long memberId);
+
   @Query("select r from Room r join fetch r.building where r.sensorLevel in :levels")
   List<Room> findWithBuildingBySensorLevelIn(@Param("levels") Collection<SensorLevel> levels);
 

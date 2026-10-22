@@ -200,4 +200,26 @@ class AirQualityJudgeTest {
       assertThat(AirQualityJudge.comfortScore(null, null, null, T)).isNull();
     }
   }
+
+  @Nested
+  class ComfortLevelBoundaries {
+
+    @Test
+    void 칠십_이상_좋음_사십일에서_육십구_보통_사십_이하_나쁨_점수가_없으면_null() {
+      assertThat(AirQualityJudge.comfortLevel(100)).isEqualTo(ComfortLevel.GOOD);
+      assertThat(AirQualityJudge.comfortLevel(70)).isEqualTo(ComfortLevel.GOOD);
+      assertThat(AirQualityJudge.comfortLevel(69)).isEqualTo(ComfortLevel.NORMAL);
+      assertThat(AirQualityJudge.comfortLevel(41)).isEqualTo(ComfortLevel.NORMAL);
+      assertThat(AirQualityJudge.comfortLevel(40)).isEqualTo(ComfortLevel.BAD);
+      assertThat(AirQualityJudge.comfortLevel(0)).isEqualTo(ComfortLevel.BAD);
+      assertThat(AirQualityJudge.comfortLevel(null)).isNull();
+    }
+
+    @Test
+    void 라벨() {
+      assertThat(ComfortLevel.GOOD.getLabel()).isEqualTo("좋음");
+      assertThat(ComfortLevel.NORMAL.getLabel()).isEqualTo("보통");
+      assertThat(ComfortLevel.BAD.getLabel()).isEqualTo("나쁨");
+    }
+  }
 }
