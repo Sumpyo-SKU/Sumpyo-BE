@@ -33,6 +33,8 @@ public class DataGoKrOutdoorClient implements OutdoorApiClient {
   static final String FORECAST_PATH = "/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst";
   static final String AIR_PATH = "/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty";
   private static final Duration TIMEOUT = Duration.ofSeconds(5);
+  /** 에어코리아 최근 몇 시간치를 받을지 (최신 칸이 아직 "-" 일 때 그 전 시각 값을 쓰려고) */
+  static final int AIR_ROWS = 3;
   private static final DateTimeFormatter YYYYMMDD = DateTimeFormatter.ofPattern("yyyyMMdd");
   private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HHmm");
 
@@ -92,17 +94,20 @@ public class DataGoKrOutdoorClient implements OutdoorApiClient {
   @Override
   public Optional<Integer> pm10() {
     String body = restClient.get()
-        .uri(AIR_PATH + "?serviceKey={key}&returnType=json&numOfRows=1&pageNo=1&stationName={station}"
-            + "&dataTerm=DAILY&ver=1.3", Map.of("key", props.apiKey().strip(), "station", props.station().strip()))
+        .uri(AIR_PATH + "?serviceKey={key}&returnType=json&numOfRows={rows}&pageNo=1&stationName={station}"
+            + "&dataTerm=DAILY&ver=1.3",
+            Map.of("key", props.apiKey().strip(), "rows", AIR_ROWS, "station", props.station().strip()))
         .retrieve().body(String.class);
     JsonNode response = read(body).path("response");
     requireOk(response);
-    JsonNode items = response.path("body").path("items");
-    if (!items.isArray() || items.isEmpty()) {
-      return Optional.empty();
+    // 최신순. 정시 값은 15~30분쯤 늦게 채워지고(그전엔 "-"), 점검 중에도 "-" → 값이 있는 가장 최신 칸
+    for (JsonNode item : response.path("body").path("items")) {
+      String value = item.path("pm10Value").asString("");
+      if (value.matches("\\d+")) {
+        return Optional.of(Integer.parseInt(value));
+      }
     }
-    String value = items.get(0).path("pm10Value").asString("");
-    return value.matches("\\d+") ? Optional.of(Integer.parseInt(value)) : Optional.empty();   // 점검 중이면 "-"
+    return Optional.empty();
   }
 
   /** 기상청 응답의 item 목록. 자료 없음(NO_DATA)이면 빈 목록 */
