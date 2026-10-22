@@ -1,11 +1,11 @@
 package com.app.sumpyo_be.domain.action.service;
 
-import com.app.sumpyo_be.domain.action.dto.ActionCompleteResponse;
-import com.app.sumpyo_be.domain.action.dto.ActionListItem;
-import com.app.sumpyo_be.domain.action.dto.ActionStartResponse;
-import com.app.sumpyo_be.domain.action.dto.ActionStatusResponse;
-import com.app.sumpyo_be.domain.action.dto.ActionStepRequest;
-import com.app.sumpyo_be.domain.action.dto.ComplaintActionResponse;
+import com.app.sumpyo_be.domain.action.dto.response.ActionCompleteResponse;
+import com.app.sumpyo_be.domain.action.dto.response.ActionListItem;
+import com.app.sumpyo_be.domain.action.dto.response.ActionStartResponse;
+import com.app.sumpyo_be.domain.action.dto.response.ActionStatusResponse;
+import com.app.sumpyo_be.domain.action.dto.request.ActionStepRequest;
+import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
 import com.app.sumpyo_be.domain.action.entity.Action;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.entity.PlanStep;
@@ -23,7 +23,7 @@ import com.app.sumpyo_be.domain.member.repository.MemberRepository;
 import com.app.sumpyo_be.domain.member.service.CurrentMemberProvider;
 import com.app.sumpyo_be.domain.member.service.MemberAccess;
 import com.app.sumpyo_be.domain.member.service.ThresholdService;
-import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
+import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.schedule.entity.ClassSchedule;
 import com.app.sumpyo_be.domain.schedule.service.ClassScheduleService;

@@ -2,8 +2,8 @@ package com.app.sumpyo_be.domain.simulator;
 
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.repository.ActionRepository;
-import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
-import com.app.sumpyo_be.domain.reading.dto.SensorPayload;
+import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
+import com.app.sumpyo_be.domain.reading.dto.request.SensorPayload;
 import com.app.sumpyo_be.domain.reading.entity.SensorReading;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.room.entity.Room;

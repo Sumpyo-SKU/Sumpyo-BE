@@ -1,6 +1,6 @@
 package com.app.sumpyo_be.domain.complaint.entity;
 
-import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
+import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

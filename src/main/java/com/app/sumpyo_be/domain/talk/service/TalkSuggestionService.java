@@ -1,7 +1,7 @@
 package com.app.sumpyo_be.domain.talk.service;
 
 import com.app.sumpyo_be.domain.air.AirQualityJudge;
-import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
+import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import com.app.sumpyo_be.domain.room.repository.RoomRepository;

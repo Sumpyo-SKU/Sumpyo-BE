@@ -1,7 +1,7 @@
 package com.app.sumpyo_be.domain.reading.repository;
 
-import com.app.sumpyo_be.domain.reading.dto.LastMeasured;
-import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
+import com.app.sumpyo_be.domain.reading.dto.projection.LastMeasured;
+import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.entity.SensorReading;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import java.time.LocalDateTime;
@@ -24,7 +24,7 @@ public interface SensorReadingRepository extends JpaRepository<SensorReading, Lo
    * idx_sensor_reading_room_measured (room_id, measured_at) 인덱스로 방마다 max 를 찾는다.
    */
   @Query("""
-      select new com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot(
+      select new com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot(
           r.room.id, r.co2, r.temp, r.humidity, r.measuredAt)
       from SensorReading r
       where r.room.id in :roomIds
@@ -36,7 +36,7 @@ public interface SensorReadingRepository extends JpaRepository<SensorReading, Lo
 
   /** 방마다 마지막 측정 시각 (기간 제한 없음). 측정이 한 번도 없는 방은 결과에 없다 */
   @Query("""
-      select new com.app.sumpyo_be.domain.reading.dto.LastMeasured(r.room.id, max(r.measuredAt))
+      select new com.app.sumpyo_be.domain.reading.dto.projection.LastMeasured(r.room.id, max(r.measuredAt))
       from SensorReading r
       where r.room.id in :roomIds
       group by r.room.id

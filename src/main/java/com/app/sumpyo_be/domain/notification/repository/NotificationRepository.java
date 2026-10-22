@@ -3,8 +3,8 @@ package com.app.sumpyo_be.domain.notification.repository;
 import com.app.sumpyo_be.domain.notification.entity.Notification;
 import com.app.sumpyo_be.domain.notification.entity.NotificationType;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -27,8 +27,24 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
       @Param("actionId") Long actionId, @Param("complaintId") Long complaintId, @Param("title") String title,
       @Param("body") String body, @Param("dedupKey") String dedupKey, @Param("createdAt") LocalDateTime createdAt);
 
-  /** 최신순 (since 이후만) */
-  Slice<Notification> findByMemberIdAndCreatedAtGreaterThanEqual(Long memberId, LocalDateTime since, Pageable pageable);
+  /** 첫 페이지: since 이후, 최신순 (created_at DESC, id DESC) */
+  @Query("""
+      select n from Notification n
+      where n.memberId = :memberId and n.createdAt >= :since
+      order by n.createdAt desc, n.id desc
+      """)
+  List<Notification> findFirstPage(@Param("memberId") Long memberId, @Param("since") LocalDateTime since,
+      Pageable pageable);
+
+  /** 다음 페이지: (created_at, id) < (커서) */
+  @Query("""
+      select n from Notification n
+      where n.memberId = :memberId and n.createdAt >= :since
+        and (n.createdAt < :cursorAt or (n.createdAt = :cursorAt and n.id < :cursorId))
+      order by n.createdAt desc, n.id desc
+      """)
+  List<Notification> findPageAfter(@Param("memberId") Long memberId, @Param("since") LocalDateTime since,
+      @Param("cursorAt") LocalDateTime cursorAt, @Param("cursorId") Long cursorId, Pageable pageable);
 
   long countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(Long memberId, LocalDateTime since);
 

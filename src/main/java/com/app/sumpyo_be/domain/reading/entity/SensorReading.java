@@ -1,6 +1,6 @@
 package com.app.sumpyo_be.domain.reading.entity;
 
-import com.app.sumpyo_be.domain.reading.dto.SensorPayload;
+import com.app.sumpyo_be.domain.reading.dto.request.SensorPayload;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

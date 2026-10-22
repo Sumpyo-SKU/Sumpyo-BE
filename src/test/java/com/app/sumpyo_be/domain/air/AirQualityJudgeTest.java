@@ -3,7 +3,7 @@ package com.app.sumpyo_be.domain.air;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.app.sumpyo_be.domain.air.AirQualityJudge.StatusResult;
-import com.app.sumpyo_be.domain.prediction.dto.PredictionPoint;
+import com.app.sumpyo_be.domain.prediction.dto.projection.PredictionPoint;
 import com.app.sumpyo_be.domain.room.entity.SensorLevel;
 import java.time.LocalDateTime;
 import java.util.List;

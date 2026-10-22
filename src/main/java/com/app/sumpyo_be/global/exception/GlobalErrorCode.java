@@ -50,7 +50,7 @@ public enum GlobalErrorCode implements BaseErrorCode {
     COMPLAINT_NOT_FOUND("G035", "존재하지 않는 민원입니다.", HttpStatus.NOT_FOUND),
     INVALID_COMPLAINT_STATUS("G036", "접수 상태의 민원만 추천을 받을 수 있습니다.", HttpStatus.CONFLICT),
     INVALID_ACTION_STEP("G037", "이 조치의 체크리스트에 없는 단계입니다.", HttpStatus.BAD_REQUEST),
-    INVALID_COMPLAINT_CURSOR("G038", "목록 커서가 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
+    INVALID_CURSOR("G038", "목록 커서가 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
     INVALID_WEEK("G039", "week 는 2026-W43 형식이어야 합니다.", HttpStatus.BAD_REQUEST),
     ;
 

@@ -2,7 +2,7 @@ package com.app.sumpyo_be.domain.room.service;
 
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
-import com.app.sumpyo_be.domain.room.dto.RoomLookupResponse;
+import com.app.sumpyo_be.domain.room.dto.response.RoomLookupResponse;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import com.app.sumpyo_be.domain.room.repository.RoomRepository;
 import java.util.Optional;

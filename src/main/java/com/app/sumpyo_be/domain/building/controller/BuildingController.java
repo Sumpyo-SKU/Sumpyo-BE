@@ -1,7 +1,9 @@
 package com.app.sumpyo_be.domain.building.controller;
 
-import com.app.sumpyo_be.domain.building.dto.BuildingResponse;
-import com.app.sumpyo_be.domain.building.dto.FloorMapResponse;
+import com.app.sumpyo_be.global.common.ApiErrors;
+import com.app.sumpyo_be.global.exception.GlobalErrorCode;
+import com.app.sumpyo_be.domain.building.dto.response.BuildingResponse;
+import com.app.sumpyo_be.domain.building.dto.response.FloorMapResponse;
 import com.app.sumpyo_be.domain.building.service.BuildingService;
 import com.app.sumpyo_be.global.common.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +34,7 @@ public class BuildingController {
 
   /** 층별 평면도. 방이 없는 층이면 rooms 가 빈 배열 */
   @Operation(summary = "층 평면도", description = "층의 강의실별 CO2·상태와 경보 강의실 수를 한 번에 반환합니다. 방이 없는 층이면 rooms 가 빈 배열입니다.")
+  @ApiErrors({GlobalErrorCode.BUILDING_NOT_FOUND})
   @GetMapping("/{buildingId}/floors/{floor}")
   public BaseResponse<FloorMapResponse> floorMap(
       @Parameter(description = "건물 ID", example = "1") @PathVariable Long buildingId,

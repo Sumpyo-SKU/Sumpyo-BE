@@ -1,7 +1,7 @@
 package com.app.sumpyo_be.domain.room.service;
 
 import com.app.sumpyo_be.domain.air.RoomStatus;
-import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
+import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
 
 /** 방 하나의 현재 상태. reading 은 최근 10분 내 측정값이 없으면 null */
 public record RoomCondition(ReadingSnapshot reading, RoomStatus status, Integer minutesToExceed) {

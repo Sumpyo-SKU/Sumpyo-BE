@@ -8,8 +8,8 @@ import static org.mockito.Mockito.when;
 
 import com.app.sumpyo_be.domain.air.RoomStatus;
 import com.app.sumpyo_be.domain.air.Thresholds;
-import com.app.sumpyo_be.domain.building.dto.FloorMapResponse;
-import com.app.sumpyo_be.domain.building.dto.FloorMapResponse.MapRoom;
+import com.app.sumpyo_be.domain.building.dto.response.FloorMapResponse;
+import com.app.sumpyo_be.domain.building.dto.response.FloorMapResponse.MapRoom;
 import com.app.sumpyo_be.domain.building.entity.Building;
 import com.app.sumpyo_be.domain.building.repository.BuildingRepository;
 import com.app.sumpyo_be.domain.member.service.ThresholdService;
