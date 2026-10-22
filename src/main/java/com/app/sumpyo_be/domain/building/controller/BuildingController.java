@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.building.controller;
 
+import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.domain.building.dto.response.BuildingResponse;
@@ -27,6 +28,8 @@ public class BuildingController {
 
   /** 건물 드롭다운 */
   @Operation(summary = "건물 목록", description = "화면 표시 순서(display_order)대로 건물 12개를 반환합니다.")
+  @Tag(name = ScreenTag.CAMPUS)
+  @Tag(name = ScreenTag.STUDENT)
   @GetMapping
   public BaseResponse<List<BuildingResponse>> buildings() {
     return BaseResponse.success(buildingService.getBuildings());
@@ -35,6 +38,7 @@ public class BuildingController {
   /** 층별 평면도. 방이 없는 층이면 rooms 가 빈 배열 */
   @Operation(summary = "층 평면도", description = "층의 강의실별 CO2·상태와 경보 강의실 수를 한 번에 반환합니다. 방이 없는 층이면 rooms 가 빈 배열입니다.")
   @ApiErrors({GlobalErrorCode.BUILDING_NOT_FOUND})
+  @Tag(name = ScreenTag.CAMPUS)
   @GetMapping("/{buildingId}/floors/{floor}")
   public BaseResponse<FloorMapResponse> floorMap(
       @Parameter(description = "건물 ID", example = "1") @PathVariable Long buildingId,

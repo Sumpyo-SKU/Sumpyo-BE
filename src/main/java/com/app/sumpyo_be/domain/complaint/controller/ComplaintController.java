@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.complaint.controller;
 
+import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.global.common.PublicApi;
@@ -31,6 +32,7 @@ public class ComplaintController {
           + "같은 clientId 로 같은 방에 10분 안에 다시 내면 429 \"잠시 후 다시 알려주세요\". 없는 roomId 는 404.")
   @PublicApi
   @ApiErrors(value = {GlobalErrorCode.INVALID_COMPLAINT_CONTENT, GlobalErrorCode.ROOM_LOOKUP_NOT_FOUND, GlobalErrorCode.COMPLAINT_TOO_SOON, GlobalErrorCode.COMPLAINT_UNAVAILABLE}, validation = true)
+  @Tag(name = ScreenTag.STUDENT)
   @PostMapping
   public BaseResponse<ComplaintCreateResponse> create(@Valid @RequestBody ComplaintCreateRequest request) {
     return BaseResponse.success("민원이 접수되었어요.", complaintService.create(request));

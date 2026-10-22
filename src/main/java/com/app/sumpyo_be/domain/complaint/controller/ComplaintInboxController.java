@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.complaint.controller;
 
+import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
@@ -41,6 +42,7 @@ public class ComplaintInboxController {
           + "(같은 시각이어도 (created_at, id) 로 이어서 중복·누락 없음). q 는 건물명·호실 번호·내용 부분 검색, "
           + "roomId 는 반복 민원 카드의 [관련 민원 확인]용. counts 는 status·cursor 를 뺀 같은 필터 기준.")
   @ApiErrors(value = {GlobalErrorCode.INVALID_CURSOR}, auth = true, validation = true)
+  @Tag(name = ScreenTag.INBOX)
   @GetMapping
   public BaseResponse<ComplaintListResponse> list(
       @Parameter(description = "탭 (비우면 전체)", example = "RECEIVED") @RequestParam(required = false) ComplaintStatus status,
@@ -57,6 +59,7 @@ public class ComplaintInboxController {
       description = "권한 W, A. 그 주(월~일) 민원이 5건 이상인 방, 많은 순. overThresholdDays 는 그 주 중 방 최고 CO2 가 "
           + "내 기준 이상이었던 날 수(CO2 센서 없는 방은 null). message 예: '이번 주 7건 · 센서도 매일 1,000ppm 초과'.")
   @ApiErrors(value = {GlobalErrorCode.INVALID_WEEK}, auth = true)
+  @Tag(name = ScreenTag.INBOX)
   @GetMapping("/repeated")
   public BaseResponse<List<RepeatedComplaintResponse>> repeated(
       @Parameter(description = "건물 ID", example = "1") @RequestParam(required = false) Long buildingId,
@@ -68,6 +71,7 @@ public class ComplaintInboxController {
       description = "권한 W, A. 접수 시점 측정값은 내 기준값으로 판정(snapshot, 측정이 없었으면 null). "
           + "action 은 연결된 가장 최근 조치 (RECEIVED → AI 추천, IN_PROGRESS → 체크리스트, DONE → CO2 변화·목표 달성).")
   @ApiErrors(value = {GlobalErrorCode.COMPLAINT_NOT_FOUND}, auth = true)
+  @Tag(name = ScreenTag.INBOX)
   @GetMapping("/{complaintId}")
   public BaseResponse<ComplaintDetailResponse> detail(
       @Parameter(description = "민원 ID", example = "15") @PathVariable Long complaintId) {
@@ -81,6 +85,7 @@ public class ComplaintInboxController {
           + "(k = 1.8회/시간 × 창문 수/2, 바깥 420ppm, 목표 800ppm, 5분 단위 최대 30분). "
           + "LLM 키 없음·10초 타임아웃·검증 실패면 규칙 기반(source RULE). 추천대로 처리 시작은 POST /api/actions/{actionId}/start.")
   @ApiErrors(value = {GlobalErrorCode.COMPLAINT_NOT_FOUND, GlobalErrorCode.INVALID_COMPLAINT_STATUS}, auth = true)
+  @Tag(name = ScreenTag.INBOX)
   @PostMapping("/{complaintId}/recommendation")
   public BaseResponse<ComplaintActionResponse> recommend(
       @Parameter(description = "민원 ID", example = "15") @PathVariable Long complaintId,

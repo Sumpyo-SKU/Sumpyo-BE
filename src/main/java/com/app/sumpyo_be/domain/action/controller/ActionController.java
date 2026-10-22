@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.action.controller;
 
+import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.domain.action.dto.response.ActionCompleteResponse;
@@ -46,6 +47,7 @@ public class ActionController {
       + "title: CLOSE '창문을 닫아주세요', OPEN 이고 그 시각 전에 수업이 시작하면 '수업 전에 열어두세요', 그 외 '창문 열어주세요'. "
       + "reason: CO2 'N분 뒤 기준 초과 예정'(지났으면 '기준 초과'), 비 예보 CLOSE '1시간 뒤 비 예상', 민원 '학생 민원 접수'.")
   @ApiErrors(value = {GlobalErrorCode.INVALID_ZONE_FILTER}, auth = true, validation = true)
+  @Tag(name = ScreenTag.HOME)
   @GetMapping
   public BaseResponse<List<ActionListItem>> list(
       @Parameter(description = "구역 필터. 비우면 전체, mine 이면 내 담당 구역", example = "mine")
@@ -59,6 +61,7 @@ public class ActionController {
 
   @Operation(summary = "조치 확인", description = "PENDING → CHECKED. 이미 CHECKED 면 그대로 성공, 그 외 상태는 409.")
   @ApiErrors({GlobalErrorCode.ACTION_NOT_FOUND, GlobalErrorCode.INVALID_ACTION_STATUS})
+  @Tag(name = ScreenTag.CAMPUS)
   @PatchMapping("/{actionId}/check")
   public BaseResponse<ActionStatusResponse> check(@Parameter(description = "조치 ID", example = "88") @PathVariable Long actionId) {
     return BaseResponse.success("확인 처리되었습니다.", actionService.check(actionId));
@@ -68,6 +71,8 @@ public class ActionController {
       description = "PENDING/CHECKED → IN_PROGRESS. 시작 시점 CO2 와 처리자를 기록합니다. 민원 조치면 민원도 IN_PROGRESS. "
           + "민원 추천 조치는 창문 시각을 찍지 않고 체크리스트(PATCH /steps)로 기록하며, 단계가 없는 추천(시설팀 신고)은 바로 완료됩니다.")
   @ApiErrors({GlobalErrorCode.ACTION_NOT_FOUND, GlobalErrorCode.INVALID_ACTION_STATUS})
+  @Tag(name = ScreenTag.CAMPUS)
+  @Tag(name = ScreenTag.INBOX)
   @PostMapping("/{actionId}/start")
   public BaseResponse<ActionStartResponse> start(@Parameter(description = "조치 ID", example = "88") @PathVariable Long actionId) {
     return BaseResponse.success("환기를 시작했습니다.", actionService.start(actionId));
@@ -79,6 +84,7 @@ public class ActionController {
           + "AC_ON → ac_on_at + 희망 온도. 모든 단계를 마치면 자동 완료(조치·민원 DONE). "
           + "결과 CO2 는 창문 단계가 있으면 measureAt(창문 연 시각 + 추천 분)에 서버가 재고, 그 전까지 actualCo2After·goalReached 는 null.")
   @ApiErrors(value = {GlobalErrorCode.INVALID_ACTION_STEP, GlobalErrorCode.ACTION_NOT_FOUND, GlobalErrorCode.INVALID_ACTION_STATUS}, validation = true)
+  @Tag(name = ScreenTag.INBOX)
   @PatchMapping("/{actionId}/steps")
   public BaseResponse<ComplaintActionResponse> checkStep(
       @Parameter(description = "조치 ID", example = "120") @PathVariable Long actionId,

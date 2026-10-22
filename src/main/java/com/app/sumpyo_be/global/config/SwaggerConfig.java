@@ -3,6 +3,7 @@ package com.app.sumpyo_be.global.config;
 import com.app.sumpyo_be.domain.member.service.CurrentMemberProvider;
 import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.common.PublicApi;
+import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.examples.Example;
@@ -14,12 +15,14 @@ import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 import io.swagger.v3.oas.models.servers.Server;
+import io.swagger.v3.oas.models.tags.Tag;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,7 +65,21 @@ public class SwaggerConfig {
         return GroupedOpenApi.builder().group("api").pathsToMatch("/**")
                 .addOperationCustomizer(demoLoginHeader)
                 .addOperationCustomizer(errorResponses)
+                .addOpenApiCustomizer(screenTagsFirst())
                 .build();
+    }
+
+    /** 태그 목록: 화면 태그(ScreenTag 순서, 설명 포함)를 맨 위에, 그 뒤에 리소스 태그 */
+    static OpenApiCustomizer screenTagsFirst() {
+        return openApi -> {
+            List<Tag> resourceTags = openApi.getTags() == null ? List.of() : openApi.getTags().stream()
+                    .filter(t -> !ScreenTag.ORDERED.containsKey(t.getName()))
+                    .toList();
+            List<Tag> tags = new ArrayList<>();
+            ScreenTag.ORDERED.forEach((name, description) -> tags.add(new Tag().name(name).description(description)));
+            tags.addAll(resourceTags);
+            openApi.setTags(tags);
+        };
     }
 
     /** 데모 모드(DEMO_HEADER_LOGIN=true)면 근로생 API 에만 X-Demo-Login 헤더 입력칸 (공개 API 제외) */
