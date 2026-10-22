@@ -24,14 +24,14 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * LLM 이 조치(단계 종류·창문 수·희망 온도)와 문장을 고른다. 숫자(분·ppm)는 서버가 계산한다 (PlanCalculator).
- * 5초 안에 검증을 통과한 JSON 이 오지 않으면 empty → 규칙 기반으로 대체.
+ * 10초 안에 검증을 통과한 JSON 이 오지 않으면 empty → 규칙 기반으로 대체 (무료 티어 응답이 가끔 5초를 넘긴다).
  * 실패 로그에는 이유만 남긴다 (프롬프트·키·응답 원문은 남기지 않음).
  */
 @Slf4j
 @Component
 public class LlmPlanner {
 
-  static final Duration TIMEOUT = Duration.ofSeconds(5);
+  static final Duration TIMEOUT = Duration.ofSeconds(10);
   static final int MAX_STEPS = 3;
   static final int MAX_TEXT = 100;
   static final int MIN_WINDOWS = 1;
@@ -85,7 +85,8 @@ public class LlmPlanner {
         .append("- 분·ppm 같은 숫자는 쓰지 마 (시간과 예상 CO2 는 서버가 넣는다)\n")
         .append("- 답답함·냄새는 창문 환기가 기본. 에어컨은 공기를 바꾸지 못하므로 실내가 적정 온도보다 더울 때만 추가\n")
         .append("- 비 예보가 있거나 미세먼지가 나쁨이면 창문 대신 다른 방법\n")
-        .append("- 설비 고장은 steps 없이 summary 를 \"시설팀에 고장 신고해주세요\" 로\n");
+        .append("- 민원 분류가 설비 고장일 때만 steps 없이 summary 를 \"시설팀에 고장 신고해주세요\" 로. ")
+        .append("다른 분류는 지금 수치가 정상이어도 학생이 불편을 느낀 것이니 근로생이 할 수 있는 조치를 골라\n");
     if (ctx.isRetry()) {
       sb.append("- 이전 추천과 다른 방법을 골라\n");
     }
@@ -98,6 +99,11 @@ public class LlmPlanner {
     sb.append('\n');
     sb.append("실내: CO2 ").append(orUnknown(ctx.co2(), "ppm")).append(", 온도 ").append(orUnknown(ctx.temp(), "°C"))
         .append(", 습도 ").append(orUnknown(ctx.humidity(), "%")).append('\n');
+    if (ctx.reportedCo2() != null || ctx.reportedTemp() != null || ctx.reportedHumidity() != null) {
+      sb.append("민원 접수 때: CO2 ").append(orUnknown(ctx.reportedCo2(), "ppm")).append(", 온도 ")
+          .append(orUnknown(ctx.reportedTemp(), "°C")).append(", 습도 ").append(orUnknown(ctx.reportedHumidity(), "%"))
+          .append('\n');
+    }
     String forecast = forecastLine(ctx);
     if (forecast != null) {
       sb.append(forecast).append('\n');

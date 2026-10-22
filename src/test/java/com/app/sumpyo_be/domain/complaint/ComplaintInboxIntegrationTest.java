@@ -438,7 +438,7 @@ class ComplaintInboxIntegrationTest {
         long id = complaint(r618, "STUFFY", null, "RECEIVED", NOW.minusMinutes(5));
         recommend(id, false).andExpect(jsonPath("$.data.source").value("RULE"));
       } finally {
-        ReflectionTestUtils.setField(llmPlanner, "timeout", Duration.ofSeconds(5));
+        ReflectionTestUtils.setField(llmPlanner, "timeout", Duration.ofSeconds(10));
       }
     }
 

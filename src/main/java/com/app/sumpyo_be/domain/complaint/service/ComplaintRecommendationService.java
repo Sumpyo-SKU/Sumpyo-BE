@@ -47,7 +47,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 민원 AI 추천 (POST /api/complaints/{id}/recommendation). LLM 이 조치를 고르고 숫자는 서버가 계산한다.
- * LLM 키 없음·타임아웃(5초)·검증 실패면 규칙 기반 (RulePlanner).
+ * LLM 키 없음·타임아웃(10초)·검증 실패면 규칙 기반 (RulePlanner).
  * RECEIVED 민원만. 대기 중 추천이 있으면 그대로, [다른 방법](retry)이면 그 추천을 이전과 다른 새 추천으로 교체.
  */
 @Service
@@ -148,7 +148,9 @@ public class ComplaintRecommendationService {
         rainForecast.firstRainWithin(now, RAIN_WITHIN).isPresent(),
         actionRepository.existsByRoomIdAndStatusAndWindowOpenedAtIsNotNullAndWindowClosedAtIsNull(roomId,
             ActionStatus.IN_PROGRESS),
-        classLabel(cn.current(), true), classLabel(cn.next(), false), co2In30, co2AtClassEnd, previous);
+        classLabel(cn.current(), true), classLabel(cn.next(), false),
+        c.getCo2Snapshot(), c.getTempSnapshot() == null ? null : c.getTempSnapshot().doubleValue(),
+        c.getHumiditySnapshot(), co2In30, co2AtClassEnd, previous);
   }
 
   private static String classLabel(ClassSchedule c, boolean current) {

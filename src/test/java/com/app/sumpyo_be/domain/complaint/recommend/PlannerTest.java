@@ -29,12 +29,12 @@ class PlannerTest {
   private static PlanContext ctx(ComplaintCategory category, Integer co2, Integer temp, Integer humidity,
       Double outTemp, Integer outHumidity, boolean rain, boolean windowOpen, PlanContext.Previous previous) {
     return new PlanContext(List.of(category), null, co2, temp, humidity, T, outTemp, outHumidity, null, rain,
-        windowOpen, null, null, null, null, previous);
+        windowOpen, null, null, null, null, null, null, null, previous);
   }
 
   private static PlanContext withForecast(Integer co2, Integer co2In30, Integer co2AtClassEnd) {
     return new PlanContext(List.of(ComplaintCategory.STUFFY), null, co2, 24, 50, T, null, null, null, false,
-        false, null, null, co2In30, co2AtClassEnd, null);
+        false, null, null, 1250, 24.1, 61, co2In30, co2AtClassEnd, null);
   }
 
   @Nested
@@ -62,7 +62,8 @@ class PlannerTest {
       assertThat(LlmPlanner.forecastLine(withForecast(1100, 1180, null))).isEqualTo("그대로 두면 30분 뒤 1,180ppm 예상");
       assertThat(LlmPlanner.forecastLine(withForecast(1100, null, null))).isNull();
       assertThat(LlmPlanner.prompt(withForecast(1100, 1180, 1280)))
-          .contains("그대로 두면 30분 뒤 1,180ppm, 수업 종료 시 1,280ppm 예상");
+          .contains("그대로 두면 30분 뒤 1,180ppm, 수업 종료 시 1,280ppm 예상",
+              "민원 접수 때: CO2 1250ppm, 온도 24.1°C, 습도 61%", "민원 분류가 설비 고장일 때만");
     }
   }
 

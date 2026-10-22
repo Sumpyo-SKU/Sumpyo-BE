@@ -74,7 +74,7 @@ public class ComplaintInboxController {
           + "{ \"retry\": true }([다른 방법])면 이전 추천과 다른 새 추천으로 교체. "
           + "LLM 이 조치(창문 열기·닫기, 에어컨)를 고르고 시간·예상 CO2 는 서버가 계산 "
           + "(k = 1.8회/시간 × 창문 수/2, 바깥 420ppm, 목표 800ppm, 5분 단위 최대 30분). "
-          + "LLM 키 없음·5초 타임아웃·검증 실패면 규칙 기반(source RULE). 추천대로 처리 시작은 POST /api/actions/{actionId}/start.")
+          + "LLM 키 없음·10초 타임아웃·검증 실패면 규칙 기반(source RULE). 추천대로 처리 시작은 POST /api/actions/{actionId}/start.")
   @PostMapping("/{complaintId}/recommendation")
   public BaseResponse<ComplaintActionResponse> recommend(
       @Parameter(description = "민원 ID", example = "15") @PathVariable Long complaintId,

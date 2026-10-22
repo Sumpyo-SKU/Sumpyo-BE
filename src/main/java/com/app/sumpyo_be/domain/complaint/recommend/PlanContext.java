@@ -13,6 +13,7 @@ import java.util.List;
  * @param windowOpen      이 방에 창문이 열린 조치가 있는지
  * @param currentClass    "데이터크롤링 (14:45까지)", 없으면 null
  * @param nextClass       "알고리즘 (15:00 시작)", 없으면 null
+ * @param reportedCo2 / reportedTemp / reportedHumidity  민원 접수 시점 측정값 (스냅샷). 없으면 null
  * @param co2In30         그대로 두면 30분 뒤 CO2 (predict.py 예측), 없으면 null
  * @param co2AtClassEnd   그대로 두면 수업(지금, 없으면 다음) 종료 시각 CO2, 없으면 null
  * @param previous        다른 방법(retry)이면 지금까지의 추천 (요약·단계), 아니면 null
@@ -31,6 +32,9 @@ public record PlanContext(
     boolean windowOpen,
     String currentClass,
     String nextClass,
+    Integer reportedCo2,
+    Double reportedTemp,
+    Integer reportedHumidity,
     Integer co2In30,
     Integer co2AtClassEnd,
     Previous previous
