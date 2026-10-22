@@ -87,17 +87,27 @@ class DataGoKrOutdoorClientTest {
   }
 
   @Test
-  void 에어코리아_pm10_점검_중이면_empty() {
+  void 에어코리아_pm10_은_값이_있는_가장_최신_칸_모두_비면_empty() {
     server.expect(requestTo(startsWith("https://apis.data.go.kr" + DataGoKrOutdoorClient.AIR_PATH)))
         .andExpect(queryParam("stationName", "%EC%A0%95%EB%A6%89%EB%A1%9C"))
+        .andExpect(queryParam("numOfRows", "3"))
         .andRespond(withSuccess("""
             {"response":{"header":{"resultCode":"00"},"body":{"items":[
+              {"dataTime":"2026-10-22 10:00","pm10Value":"28"},
+              {"dataTime":"2026-10-22 09:00","pm10Value":"31"}]}}}""", MediaType.APPLICATION_JSON));
+    // 정시 값이 아직 안 채워짐 → 그 전 시각
+    server.expect(requestTo(startsWith("https://apis.data.go.kr" + DataGoKrOutdoorClient.AIR_PATH)))
+        .andRespond(withSuccess("""
+            {"response":{"header":{"resultCode":"00"},"body":{"items":[
+              {"dataTime":"2026-10-22 11:00","pm10Value":"-"},
               {"dataTime":"2026-10-22 10:00","pm10Value":"28"}]}}}""", MediaType.APPLICATION_JSON));
     server.expect(requestTo(startsWith("https://apis.data.go.kr" + DataGoKrOutdoorClient.AIR_PATH)))
         .andRespond(withSuccess("""
             {"response":{"header":{"resultCode":"00"},"body":{"items":[
-              {"dataTime":"2026-10-22 10:00","pm10Value":"-"}]}}}""", MediaType.APPLICATION_JSON));
+              {"dataTime":"2026-10-22 11:00","pm10Value":"-"},
+              {"dataTime":"2026-10-22 10:00","pm10Value":null}]}}}""", MediaType.APPLICATION_JSON));
 
+    assertThat(client.pm10()).contains(28);
     assertThat(client.pm10()).contains(28);
     assertThat(client.pm10()).isEmpty();
   }
