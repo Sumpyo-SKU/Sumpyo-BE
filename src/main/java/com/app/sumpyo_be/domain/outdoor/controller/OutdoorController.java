@@ -1,6 +1,8 @@
 package com.app.sumpyo_be.domain.outdoor.controller;
 
-import com.app.sumpyo_be.domain.outdoor.dto.OutdoorLatestResponse;
+import com.app.sumpyo_be.global.common.ApiErrors;
+import com.app.sumpyo_be.global.exception.GlobalErrorCode;
+import com.app.sumpyo_be.domain.outdoor.dto.response.OutdoorLatestResponse;
 import com.app.sumpyo_be.domain.outdoor.service.OutdoorService;
 import com.app.sumpyo_be.global.common.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +23,7 @@ public class OutdoorController {
   @Operation(summary = "바깥 공기 최신값",
       description = "권한 W, A. 매시 10분에 공공데이터포털(기상청 초단기실황 기온·습도, 에어코리아 PM10)에서 모은 값 중 가장 최근. "
           + "아직 모은 값이 없으면 data: null.")
+  @ApiErrors(auth = true)
   @GetMapping("/latest")
   public BaseResponse<OutdoorLatestResponse> latest() {
     return BaseResponse.success(outdoorService.latest());

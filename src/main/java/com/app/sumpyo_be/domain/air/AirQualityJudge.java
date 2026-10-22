@@ -1,6 +1,6 @@
 package com.app.sumpyo_be.domain.air;
 
-import com.app.sumpyo_be.domain.prediction.dto.PredictionPoint;
+import com.app.sumpyo_be.domain.prediction.dto.projection.PredictionPoint;
 import com.app.sumpyo_be.domain.room.entity.SensorLevel;
 import java.time.Duration;
 import java.time.LocalDateTime;

@@ -8,7 +8,7 @@ import com.app.sumpyo_be.domain.air.AirQualityJudge;
 import com.app.sumpyo_be.domain.outdoor.service.RainForecast;
 import com.app.sumpyo_be.domain.prediction.entity.Prediction;
 import com.app.sumpyo_be.domain.prediction.repository.PredictionRepository;
-import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
+import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import java.time.Duration;

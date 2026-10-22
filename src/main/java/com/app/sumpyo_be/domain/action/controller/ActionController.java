@@ -1,11 +1,13 @@
 package com.app.sumpyo_be.domain.action.controller;
 
-import com.app.sumpyo_be.domain.action.dto.ActionCompleteResponse;
-import com.app.sumpyo_be.domain.action.dto.ActionListItem;
-import com.app.sumpyo_be.domain.action.dto.ActionStartResponse;
-import com.app.sumpyo_be.domain.action.dto.ActionStatusResponse;
-import com.app.sumpyo_be.domain.action.dto.ActionStepRequest;
-import com.app.sumpyo_be.domain.action.dto.ComplaintActionResponse;
+import com.app.sumpyo_be.global.common.ApiErrors;
+import com.app.sumpyo_be.global.exception.GlobalErrorCode;
+import com.app.sumpyo_be.domain.action.dto.response.ActionCompleteResponse;
+import com.app.sumpyo_be.domain.action.dto.response.ActionListItem;
+import com.app.sumpyo_be.domain.action.dto.response.ActionStartResponse;
+import com.app.sumpyo_be.domain.action.dto.response.ActionStatusResponse;
+import com.app.sumpyo_be.domain.action.dto.request.ActionStepRequest;
+import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.service.ActionService;
 import com.app.sumpyo_be.global.common.BaseResponse;
@@ -43,6 +45,7 @@ public class ActionController {
       + "아니면 timeLabel HH:mm·relative '30분 뒤'·metricLabel 'CO2 예상'. "
       + "title: CLOSE '창문을 닫아주세요', OPEN 이고 그 시각 전에 수업이 시작하면 '수업 전에 열어두세요', 그 외 '창문 열어주세요'. "
       + "reason: CO2 'N분 뒤 기준 초과 예정'(지났으면 '기준 초과'), 비 예보 CLOSE '1시간 뒤 비 예상', 민원 '학생 민원 접수'.")
+  @ApiErrors(value = {GlobalErrorCode.INVALID_ZONE_FILTER}, auth = true, validation = true)
   @GetMapping
   public BaseResponse<List<ActionListItem>> list(
       @Parameter(description = "구역 필터. 비우면 전체, mine 이면 내 담당 구역", example = "mine")
@@ -55,6 +58,7 @@ public class ActionController {
   }
 
   @Operation(summary = "조치 확인", description = "PENDING → CHECKED. 이미 CHECKED 면 그대로 성공, 그 외 상태는 409.")
+  @ApiErrors({GlobalErrorCode.ACTION_NOT_FOUND, GlobalErrorCode.INVALID_ACTION_STATUS})
   @PatchMapping("/{actionId}/check")
   public BaseResponse<ActionStatusResponse> check(@Parameter(description = "조치 ID", example = "88") @PathVariable Long actionId) {
     return BaseResponse.success("확인 처리되었습니다.", actionService.check(actionId));
@@ -63,6 +67,7 @@ public class ActionController {
   @Operation(summary = "환기 시작 / 추천대로 처리 시작",
       description = "PENDING/CHECKED → IN_PROGRESS. 시작 시점 CO2 와 처리자를 기록합니다. 민원 조치면 민원도 IN_PROGRESS. "
           + "민원 추천 조치는 창문 시각을 찍지 않고 체크리스트(PATCH /steps)로 기록하며, 단계가 없는 추천(시설팀 신고)은 바로 완료됩니다.")
+  @ApiErrors({GlobalErrorCode.ACTION_NOT_FOUND, GlobalErrorCode.INVALID_ACTION_STATUS})
   @PostMapping("/{actionId}/start")
   public BaseResponse<ActionStartResponse> start(@Parameter(description = "조치 ID", example = "88") @PathVariable Long actionId) {
     return BaseResponse.success("환기를 시작했습니다.", actionService.start(actionId));
@@ -73,6 +78,7 @@ public class ActionController {
           + "이미 체크했으면 그대로 200. WINDOW_OPEN → window_opened_at, WINDOW_CLOSE → window_closed_at, "
           + "AC_ON → ac_on_at + 희망 온도. 모든 단계를 마치면 자동 완료(조치·민원 DONE). "
           + "결과 CO2 는 창문 단계가 있으면 measureAt(창문 연 시각 + 추천 분)에 서버가 재고, 그 전까지 actualCo2After·goalReached 는 null.")
+  @ApiErrors(value = {GlobalErrorCode.INVALID_ACTION_STEP, GlobalErrorCode.ACTION_NOT_FOUND, GlobalErrorCode.INVALID_ACTION_STATUS}, validation = true)
   @PatchMapping("/{actionId}/steps")
   public BaseResponse<ComplaintActionResponse> checkStep(
       @Parameter(description = "조치 ID", example = "120") @PathVariable Long actionId,
@@ -81,6 +87,7 @@ public class ActionController {
   }
 
   @Operation(summary = "조치 완료", description = "예측 조치용. IN_PROGRESS → DONE. 완료 시점 CO2 로 목표 달성 여부를 계산하고, 연결된 민원도 완료 처리합니다.")
+  @ApiErrors({GlobalErrorCode.ACTION_NOT_FOUND, GlobalErrorCode.INVALID_ACTION_STATUS})
   @PostMapping("/{actionId}/complete")
   public BaseResponse<ActionCompleteResponse> complete(@Parameter(description = "조치 ID", example = "88") @PathVariable Long actionId) {
     return BaseResponse.success("조치를 완료했습니다.", actionService.complete(actionId));

@@ -4,9 +4,9 @@ import com.app.sumpyo_be.domain.action.repository.ActionRepository;
 import com.app.sumpyo_be.domain.action.service.ComplaintActionAssembler;
 import com.app.sumpyo_be.domain.air.AirQualityJudge;
 import com.app.sumpyo_be.domain.air.Thresholds;
-import com.app.sumpyo_be.domain.complaint.dto.ComplaintDetailResponse;
-import com.app.sumpyo_be.domain.complaint.dto.ComplaintListResponse;
-import com.app.sumpyo_be.domain.complaint.dto.RepeatedComplaintResponse;
+import com.app.sumpyo_be.domain.complaint.dto.response.ComplaintDetailResponse;
+import com.app.sumpyo_be.domain.complaint.dto.response.ComplaintListResponse;
+import com.app.sumpyo_be.domain.complaint.dto.response.RepeatedComplaintResponse;
 import com.app.sumpyo_be.domain.complaint.entity.Complaint;
 import com.app.sumpyo_be.domain.complaint.entity.ComplaintCategory;
 import com.app.sumpyo_be.domain.complaint.entity.ComplaintStatus;
@@ -18,6 +18,7 @@ import com.app.sumpyo_be.domain.member.service.ThresholdService;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import com.app.sumpyo_be.domain.room.repository.RoomRepository;
+import com.app.sumpyo_be.global.common.TimeIdCursor;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import java.time.Clock;
@@ -68,7 +69,7 @@ public class ComplaintInboxService {
   public ComplaintListResponse list(ComplaintStatus status, Long buildingId, Long roomId, String q, String cursor,
       int size) {
     memberAccess.require(Role.WORKER, Role.ADMIN);
-    ComplaintCursor after = ComplaintCursor.decode(cursor);
+    TimeIdCursor after = TimeIdCursor.decode(cursor);
     Specification<Complaint> base = Specification.where(ComplaintSpecs.inBuilding(buildingId))
         .and(ComplaintSpecs.inRoom(roomId)).and(ComplaintSpecs.search(q));
 
@@ -92,7 +93,7 @@ public class ComplaintInboxService {
             .status(c.getStatus())
             .createdAt(c.getCreatedAt())
             .build()).toList())
-        .nextCursor(last == null ? null : new ComplaintCursor(last.getCreatedAt(), last.getId()).encode())
+        .nextCursor(last == null ? null : new TimeIdCursor(last.getCreatedAt(), last.getId()).encode())
         .hasNext(hasNext)
         .build();
   }

@@ -1,6 +1,6 @@
 package com.app.sumpyo_be.domain.complaint.service;
 
-import com.app.sumpyo_be.domain.action.dto.ComplaintActionResponse;
+import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
 import com.app.sumpyo_be.domain.action.entity.Action;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.entity.Metric;
@@ -28,7 +28,7 @@ import com.app.sumpyo_be.domain.outdoor.entity.OutdoorObservation;
 import com.app.sumpyo_be.domain.outdoor.repository.OutdoorObservationRepository;
 import com.app.sumpyo_be.domain.outdoor.service.RainForecast;
 import com.app.sumpyo_be.domain.prediction.service.PredictionLookup;
-import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
+import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.schedule.entity.ClassSchedule;
 import com.app.sumpyo_be.domain.schedule.service.ClassScheduleService;

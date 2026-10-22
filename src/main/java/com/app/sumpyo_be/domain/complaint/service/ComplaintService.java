@@ -1,15 +1,15 @@
 package com.app.sumpyo_be.domain.complaint.service;
 
 import com.app.sumpyo_be.domain.air.AirQualityJudge;
-import com.app.sumpyo_be.domain.complaint.dto.ComplaintCreateRequest;
-import com.app.sumpyo_be.domain.complaint.dto.ComplaintCreateResponse;
+import com.app.sumpyo_be.domain.complaint.dto.request.ComplaintCreateRequest;
+import com.app.sumpyo_be.domain.complaint.dto.response.ComplaintCreateResponse;
 import com.app.sumpyo_be.domain.complaint.entity.Complaint;
 import com.app.sumpyo_be.domain.complaint.entity.ComplaintCategory;
 import com.app.sumpyo_be.domain.complaint.repository.ComplaintRepository;
 import com.app.sumpyo_be.domain.notification.service.ComplaintNotifier;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
-import com.app.sumpyo_be.domain.reading.dto.ReadingSnapshot;
+import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import com.app.sumpyo_be.domain.room.repository.RoomRepository;

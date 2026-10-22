@@ -350,15 +350,37 @@ class NotificationApiIntegrationTest {
     }
 
     @Test
-    void 페이지() throws Exception {
-      for (int i = 1; i <= 3; i++) {
-        insert(W1, "VENTILATION_NOW", NOW.minusMinutes(i));
+    void 커서_무한_스크롤_같은_시각이어도_중복_누락_없음() throws Exception {
+      List<Long> ids = new java.util.ArrayList<>();
+      for (int i = 0; i < 5; i++) {
+        // 0~2 는 같은 시각
+        ids.add(jdbc.queryForObject("""
+            insert into notification (member_id, type, room_id, title, dedup_key, created_at)
+            values ((select id from member where login_id = ?), 'VENTILATION_NOW', ?, 't', ?, ?) returning id""",
+            Long.class, W1, r618, "page:" + i, NOW.minusMinutes(i < 3 ? 1 : i)));
       }
-      as(W1, get("/api/notifications?page=0&size=2"))
-          .andExpect(jsonPath("$.data.content", hasSize(2))).andExpect(jsonPath("$.data.hasNext").value(true));
-      as(W1, get("/api/notifications?page=1&size=2"))
-          .andExpect(jsonPath("$.data.content", hasSize(1))).andExpect(jsonPath("$.data.hasNext").value(false));
-      as(W1, get("/api/notifications?size=51")).andExpect(status().isBadRequest());
+      String first = as(W1, get("/api/notifications").param("size", "2"))
+          .andExpect(jsonPath("$.data.content", hasSize(2))).andExpect(jsonPath("$.data.hasNext").value(true))
+          .andReturn().getResponse().getContentAsString();
+      String second = as(W1, get("/api/notifications").param("size", "2")
+              .param("cursor", (String) com.jayway.jsonpath.JsonPath.read(first, "$.data.nextCursor")))
+          .andExpect(jsonPath("$.data.content", hasSize(2))).andReturn().getResponse().getContentAsString();
+      String third = as(W1, get("/api/notifications").param("size", "2")
+              .param("cursor", (String) com.jayway.jsonpath.JsonPath.read(second, "$.data.nextCursor")))
+          .andExpect(jsonPath("$.data.content", hasSize(1)))
+          .andExpect(jsonPath("$.data.hasNext").value(false))
+          .andExpect(jsonPath("$.data.nextCursor").value(nullValue()))
+          .andReturn().getResponse().getContentAsString();
+
+      List<Integer> seen = new java.util.ArrayList<>();
+      for (String page : List.of(first, second, third)) {
+        seen.addAll(com.jayway.jsonpath.JsonPath.read(page, "$.data.content[*].notificationId"));
+      }
+      // 같은 시각(0~2)은 id 내림차순, 그다음 3, 4
+      assertThat(seen).containsExactly(ids.get(2).intValue(), ids.get(1).intValue(), ids.get(0).intValue(),
+          ids.get(3).intValue(), ids.get(4).intValue());
+      as(W1, get("/api/notifications").param("size", "51")).andExpect(status().isBadRequest());
+      as(W1, get("/api/notifications").param("cursor", "broken")).andExpect(status().isBadRequest());
     }
 
     @Test
@@ -386,6 +408,52 @@ class NotificationApiIntegrationTest {
           .andExpect(status().isOk()).andExpect(jsonPath("$.data.readCount").value(2));
       as(W1, get("/api/notifications")).andExpect(jsonPath("$.data.unreadCount").value(0));
       as(W2, get("/api/notifications")).andExpect(jsonPath("$.data.unreadCount").value(1));
+    }
+  }
+
+  @Nested
+  class SwaggerAndFormat {
+
+    @Test
+    void 시각은_초까지_소수점_없음() throws Exception {
+      jdbc.update("insert into sensor_reading (room_id, co2, temp, humidity, measured_at) values (?, 800, 24, 45, ?)",
+          r617, NOW.minusMinutes(1).plusNanos(123_456_000));
+      mvc.perform(get("/api/rooms/{id}/readings/latest", r617))
+          .andExpect(jsonPath("$.data.measuredAt").value("2026-10-21T13:59:00"));
+      jdbc.update("insert into sensor_reading (room_id, co2, temp, humidity, measured_at) values (?, 800, 24, 45, ?)",
+          r617, NOW);   // 정각도 초까지
+      mvc.perform(get("/api/rooms/{id}/readings/latest", r617))
+          .andExpect(jsonPath("$.data.measuredAt").value("2026-10-21T14:00:00"));
+    }
+
+    @Test
+    void 스웨거_인증_설명_헤더_에러_응답_스키마_이름() throws Exception {
+      mvc.perform(get("/v3/api-docs/api"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.info.description").value(org.hamcrest.Matchers.containsString("X-Demo-Login: worker02")))
+          .andExpect(jsonPath("$.servers[0].description").value("운영 서버"))
+          .andExpect(jsonPath("$.components.securitySchemes").doesNotExist())
+          .andExpect(jsonPath("$.security").doesNotExist())
+          // X-Demo-Login: 근로생 API 에만
+          .andExpect(jsonPath("$.paths['/api/talks'].get.parameters[?(@.name == 'X-Demo-Login')]", hasSize(1)))
+          .andExpect(jsonPath("$.paths['/api/complaints'].post.parameters").doesNotExist())
+          .andExpect(jsonPath("$.paths['/api/rooms/{code}/readings'].post.parameters[?(@.name == 'X-Demo-Login')]")
+              .isEmpty())
+          // 에러 응답 문서
+          .andExpect(jsonPath("$.paths['/api/actions/{actionId}/start'].post.responses['409'].content"
+              + "['application/json'].examples['G012 INVALID_ACTION_STATUS'].value.message")
+              .value("현재 상태에서는 처리할 수 없는 조치입니다."))
+          .andExpect(jsonPath("$.paths['/api/complaints'].post.responses['429']").exists())
+          .andExpect(jsonPath("$.paths['/api/me/talk-filter'].get.responses['400'].description")
+              .value("담당 구역을 먼저 설정해주세요."))
+          .andExpect(jsonPath("$.paths['/api/notifications'].get.responses['403']").exists())
+          // 숨김 API, 스키마 이름
+          .andExpect(jsonPath("$.paths['/api/rooms/{code}/readings/range']").doesNotExist())
+          .andExpect(jsonPath("$.components.schemas.NotificationItem").exists())
+          .andExpect(jsonPath("$.components.schemas.ComplaintListItem").exists())
+          .andExpect(jsonPath("$.components.schemas.TalkListItem").exists())
+          .andExpect(jsonPath("$.components.schemas.Item").doesNotExist())
+          .andExpect(jsonPath("$.components.schemas.PageResponse").doesNotExist());
     }
   }
 

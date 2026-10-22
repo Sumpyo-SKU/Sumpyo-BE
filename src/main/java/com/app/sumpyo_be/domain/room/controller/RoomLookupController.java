@@ -1,7 +1,10 @@
 package com.app.sumpyo_be.domain.room.controller;
 
+import com.app.sumpyo_be.global.common.ApiErrors;
+import com.app.sumpyo_be.global.exception.GlobalErrorCode;
+import com.app.sumpyo_be.global.common.PublicApi;
 import com.app.sumpyo_be.global.common.BaseResponse;
-import com.app.sumpyo_be.domain.room.dto.RoomLookupResponse;
+import com.app.sumpyo_be.domain.room.dto.response.RoomLookupResponse;
 import com.app.sumpyo_be.domain.room.service.RoomLookupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +26,8 @@ public class RoomLookupController {
       description = "QR 링크는 code 로, 위치 선택 시트는 buildingId + number 로 호출합니다. "
           + "number 는 앞뒤 공백과 뒤의 '호'를 무시합니다(\"618호\" → 618). "
           + "없으면 404 \"호실을 찾을 수 없어요\" (강의실 데이터가 없는 건물도 404).")
+  @PublicApi
+  @ApiErrors({GlobalErrorCode.INVALID_ROOM_LOOKUP, GlobalErrorCode.ROOM_LOOKUP_NOT_FOUND})
   @GetMapping("/api/rooms/lookup")
   public BaseResponse<RoomLookupResponse> lookup(
       @Parameter(description = "강의실 코드 (QR 링크)", example = "bukak-618")

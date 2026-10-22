@@ -3,20 +3,20 @@ package com.app.sumpyo_be.domain.notification.service;
 import com.app.sumpyo_be.domain.member.entity.Member;
 import com.app.sumpyo_be.domain.member.entity.Role;
 import com.app.sumpyo_be.domain.member.service.MemberAccess;
-import com.app.sumpyo_be.domain.notification.dto.NotificationListResponse;
-import com.app.sumpyo_be.domain.notification.dto.NotificationReadAllResponse;
-import com.app.sumpyo_be.domain.notification.dto.NotificationUnreadCountResponse;
+import com.app.sumpyo_be.domain.notification.dto.response.NotificationListResponse;
+import com.app.sumpyo_be.domain.notification.dto.response.NotificationReadAllResponse;
+import com.app.sumpyo_be.domain.notification.dto.response.NotificationUnreadCountResponse;
 import com.app.sumpyo_be.domain.notification.entity.Notification;
 import com.app.sumpyo_be.domain.notification.repository.NotificationRepository;
+import com.app.sumpyo_be.global.common.TimeIdCursor;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,17 +31,27 @@ public class NotificationService {
   private final NotificationRepository notificationRepository;
   private final Clock clock;
 
-  /** 최신순. page 는 0부터 */
+  /**
+   * 최신순 (created_at DESC, id DESC) 커서 무한 스크롤. size + 1 개를 읽어 다음이 있는지 판단한다.
+   * @param cursor 이전 응답의 nextCursor. null 이면 처음부터
+   */
   @Transactional(readOnly = true)
-  public NotificationListResponse list(int page, int size) {
+  public NotificationListResponse list(String cursor, int size) {
     Member me = memberAccess.require(Role.WORKER);
+    TimeIdCursor after = TimeIdCursor.decode(cursor);
     LocalDateTime since = LocalDateTime.now(clock).minus(VISIBLE_FOR);
-    Slice<Notification> slice = notificationRepository.findByMemberIdAndCreatedAtGreaterThanEqual(me.getId(), since,
-        PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+    PageRequest limit = PageRequest.of(0, size + 1);
+    List<Notification> fetched = after == null
+        ? notificationRepository.findFirstPage(me.getId(), since, limit)
+        : notificationRepository.findPageAfter(me.getId(), since, after.createdAt(), after.id(), limit);
+    boolean hasNext = fetched.size() > size;
+    List<Notification> page = hasNext ? fetched.subList(0, size) : fetched;
+    Notification last = hasNext ? page.getLast() : null;
     return NotificationListResponse.builder()
         .unreadCount(notificationRepository.countByMemberIdAndReadAtIsNullAndCreatedAtGreaterThanEqual(me.getId(), since))
-        .content(slice.getContent().stream().map(NotificationListResponse.Item::from).toList())
-        .hasNext(slice.hasNext())
+        .content(page.stream().map(NotificationListResponse.Item::from).toList())
+        .nextCursor(last == null ? null : new TimeIdCursor(last.getCreatedAt(), last.getId()).encode())
+        .hasNext(hasNext)
         .build();
   }
 

@@ -1,6 +1,8 @@
 package com.app.sumpyo_be.domain.complaint.controller;
 
-import com.app.sumpyo_be.domain.complaint.dto.ComplaintQrInfoResponse;
+import com.app.sumpyo_be.global.common.ApiErrors;
+import com.app.sumpyo_be.global.exception.GlobalErrorCode;
+import com.app.sumpyo_be.domain.complaint.dto.response.ComplaintQrInfoResponse;
 import com.app.sumpyo_be.domain.complaint.service.ComplaintQrService;
 import com.app.sumpyo_be.global.common.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,6 +36,7 @@ public class ComplaintQrController {
       responses = @ApiResponse(responseCode = "200", description = "PNG 이미지",
           content = @Content(mediaType = MediaType.IMAGE_PNG_VALUE,
               schema = @Schema(type = "string", format = "binary"))))
+  @ApiErrors(value = {GlobalErrorCode.QR_NOT_LECTURE, GlobalErrorCode.ROOM_NOT_FOUND}, auth = true)
   @GetMapping
   public ResponseEntity<byte[]> image(@Parameter(description = "강의실 ID", example = "7") @PathVariable Long roomId) {
     ComplaintQrService.QrImage qr = qrService.image(roomId);
@@ -46,6 +49,7 @@ public class ComplaintQrController {
 
   @Operation(summary = "민원 QR 정보",
       description = "권한 W, A. 화면에 보여줄 강의실 이름과 QR 에 담긴 주소. 강의실(LECTURE)만, 아니면 400. 없는 방 404.")
+  @ApiErrors(value = {GlobalErrorCode.QR_NOT_LECTURE, GlobalErrorCode.ROOM_NOT_FOUND}, auth = true)
   @GetMapping("/info")
   public BaseResponse<ComplaintQrInfoResponse> info(
       @Parameter(description = "강의실 ID", example = "7") @PathVariable Long roomId) {

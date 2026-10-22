@@ -1,11 +1,13 @@
 package com.app.sumpyo_be.domain.member.controller;
 
+import com.app.sumpyo_be.global.common.ApiErrors;
+import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.global.common.BaseResponse;
-import com.app.sumpyo_be.domain.member.dto.MyRoomResponse;
-import com.app.sumpyo_be.domain.member.dto.SettingsResponse;
-import com.app.sumpyo_be.domain.member.dto.SettingsUpdateRequest;
-import com.app.sumpyo_be.domain.member.dto.ZoneRequest;
-import com.app.sumpyo_be.domain.member.dto.ZoneResponse;
+import com.app.sumpyo_be.domain.member.dto.response.MyRoomResponse;
+import com.app.sumpyo_be.domain.member.dto.response.SettingsResponse;
+import com.app.sumpyo_be.domain.member.dto.request.SettingsUpdateRequest;
+import com.app.sumpyo_be.domain.member.dto.request.ZoneRequest;
+import com.app.sumpyo_be.domain.member.dto.response.ZoneResponse;
 import com.app.sumpyo_be.domain.member.service.MeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,6 +32,7 @@ public class MeController {
   @Operation(summary = "내 강의실 (홈 방 선택)",
       description = "권한 W. 내 담당 구역(건물+층)의 센서 있는 강의실(LECTURE, FULL·SIM). 건물 순서 → 층 → 호수. "
           + "선택 상태는 프론트가 기억. 빈 배열이면 담당 구역 설정으로 안내.")
+  @ApiErrors(auth = true)
   @GetMapping("/rooms")
   public BaseResponse<List<MyRoomResponse>> rooms() {
     return BaseResponse.success(meService.getMyRooms());
@@ -37,6 +40,7 @@ public class MeController {
 
   /** 권한 W. 비어 있으면 [] → 온보딩 표시 */
   @Operation(summary = "내 담당 구역 조회", description = "권한 W. 담당 구역이 없으면 [] 이고, 이때 프론트는 온보딩을 띄웁니다.")
+  @ApiErrors(auth = true)
   @GetMapping("/zones")
   public BaseResponse<List<ZoneResponse>> zones() {
     return BaseResponse.success(meService.getZones());
@@ -44,6 +48,7 @@ public class MeController {
 
   /** 권한 W. 보낸 목록으로 통째로 교체 */
   @Operation(summary = "내 담당 구역 저장", description = "권한 W. 보낸 목록으로 통째로 교체합니다. 없는 건물 404, 층 범위 밖·빈 층 목록·중복 400.")
+  @ApiErrors(value = {GlobalErrorCode.INVALID_ZONE_FLOOR, GlobalErrorCode.DUPLICATED_ZONE, GlobalErrorCode.BUILDING_NOT_FOUND}, auth = true, validation = true)
   @PutMapping("/zones")
   public BaseResponse<List<ZoneResponse>> replaceZones(@RequestBody List<ZoneRequest> zones) {
     return BaseResponse.success("담당 구역을 저장했습니다.", meService.replaceZones(zones));
@@ -51,6 +56,7 @@ public class MeController {
 
   /** 권한 W, A */
   @Operation(summary = "내 설정 조회", description = "권한 W, A. cautionFrom/criticalFrom 은 기준값에서 계산한 값입니다.")
+  @ApiErrors(auth = true)
   @GetMapping("/settings")
   public BaseResponse<SettingsResponse> settings() {
     return BaseResponse.success(meService.getSettings());
@@ -60,6 +66,7 @@ public class MeController {
   @Operation(summary = "내 설정 변경", description = "권한 W, A. 보낸 값만 바뀝니다. co2Threshold 600~1500, alertLeadMinutes 10·15·20, 최솟값 < 최댓값. "
       + "알림 종류별 on/off: notifyVentilation(끄면 alertEnabled 와 상관없이 환기 알림 없음), notifyComplaint, notifySensorError. "
       + "기본값 되돌리기는 기본값을 그대로 PUT.")
+  @ApiErrors(value = {GlobalErrorCode.INVALID_RANGE_SETTING, GlobalErrorCode.INVALID_ALERT_LEAD_MINUTES}, auth = true, validation = true)
   @PutMapping("/settings")
   public BaseResponse<SettingsResponse> updateSettings(@Valid @RequestBody SettingsUpdateRequest request) {
     return BaseResponse.success("설정을 저장했습니다.", meService.updateSettings(request));

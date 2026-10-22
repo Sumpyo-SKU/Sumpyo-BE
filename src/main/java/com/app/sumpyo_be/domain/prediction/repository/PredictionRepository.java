@@ -1,6 +1,6 @@
 package com.app.sumpyo_be.domain.prediction.repository;
 
-import com.app.sumpyo_be.domain.prediction.dto.PredictionPoint;
+import com.app.sumpyo_be.domain.prediction.dto.projection.PredictionPoint;
 import com.app.sumpyo_be.domain.prediction.entity.Prediction;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -16,7 +16,7 @@ public interface PredictionRepository extends JpaRepository<Prediction, Long> {
    * 여러 방을 쿼리 한 번으로 조회한다 (평면도 N+1 방지).
    */
   @Query("""
-      select new com.app.sumpyo_be.domain.prediction.dto.PredictionPoint(p.room.id, p.targetAt, p.co2)
+      select new com.app.sumpyo_be.domain.prediction.dto.projection.PredictionPoint(p.room.id, p.targetAt, p.co2)
       from Prediction p
       where p.room.id in :roomIds
         and p.targetAt > :from and p.targetAt <= :to

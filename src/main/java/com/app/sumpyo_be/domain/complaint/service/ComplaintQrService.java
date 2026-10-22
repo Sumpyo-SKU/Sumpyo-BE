@@ -1,6 +1,6 @@
 package com.app.sumpyo_be.domain.complaint.service;
 
-import com.app.sumpyo_be.domain.complaint.dto.ComplaintQrInfoResponse;
+import com.app.sumpyo_be.domain.complaint.dto.response.ComplaintQrInfoResponse;
 import com.app.sumpyo_be.domain.member.entity.Role;
 import com.app.sumpyo_be.domain.member.service.MemberAccess;
 import com.app.sumpyo_be.domain.room.entity.Room;

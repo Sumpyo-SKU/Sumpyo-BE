@@ -2,9 +2,9 @@ package com.app.sumpyo_be.domain.building.service;
 
 import com.app.sumpyo_be.domain.air.AirQualityJudge;
 import com.app.sumpyo_be.domain.air.Thresholds;
-import com.app.sumpyo_be.domain.building.dto.BuildingResponse;
-import com.app.sumpyo_be.domain.building.dto.FloorMapResponse;
-import com.app.sumpyo_be.domain.building.dto.FloorMapResponse.MapRoom;
+import com.app.sumpyo_be.domain.building.dto.response.BuildingResponse;
+import com.app.sumpyo_be.domain.building.dto.response.FloorMapResponse;
+import com.app.sumpyo_be.domain.building.dto.response.FloorMapResponse.MapRoom;
 import com.app.sumpyo_be.domain.building.repository.BuildingRepository;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;

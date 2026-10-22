@@ -1,11 +1,14 @@
 package com.app.sumpyo_be.domain.reading.controller;
 
+import com.app.sumpyo_be.global.common.ApiErrors;
+import com.app.sumpyo_be.global.common.PublicApi;
+import io.swagger.v3.oas.annotations.Hidden;
 import com.app.sumpyo_be.global.common.BaseResponse;
 import com.app.sumpyo_be.global.config.DeviceProperties;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
-import com.app.sumpyo_be.domain.reading.dto.SensorPayload;
-import com.app.sumpyo_be.domain.reading.dto.SensorReadingResponse;
+import com.app.sumpyo_be.domain.reading.dto.request.SensorPayload;
+import com.app.sumpyo_be.domain.reading.dto.response.SensorReadingResponse;
 import com.app.sumpyo_be.domain.reading.entity.SensorReading;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import com.app.sumpyo_be.domain.room.entity.Room;
@@ -43,6 +46,8 @@ public class SensorReadingController {
 
   // TODO: ESP32 가 아직 /api/rooms/517/readings 로 보냄. 펌웨어 교체 전까지 device.aliases 로 517 → bukak-617 매핑
   @Operation(summary = "측정값 저장 (센서 전용)", description = "ESP32 가 1분마다 보내는 CO2·온습도를 저장합니다. X-Device-Key 헤더가 강의실 키와 맞아야 합니다. 517 은 bukak-617 로 처리합니다.")
+  @PublicApi
+  @ApiErrors(value = {GlobalErrorCode.INVALID_DEVICE_KEY, GlobalErrorCode.ROOM_NOT_FOUND}, validation = true)
   @PostMapping
   public BaseResponse<Void> save(
       @Parameter(description = "강의실 코드", example = "bukak-617") @PathVariable String code,
@@ -65,6 +70,7 @@ public class SensorReadingController {
    * 예: /range?from=2026-10-14T00:00:00&to=2026-10-15T00:00:00
    */
   @Operation(summary = "구간 측정값 조회", description = "기록 화면용 원본 측정값. [from, to) 범위, 최대 31일.")
+  @Hidden
   @GetMapping("/range")
   public BaseResponse<List<SensorReadingResponse>> range(
       @Parameter(description = "강의실 코드", example = "bukak-617") @PathVariable String code,

@@ -1,7 +1,7 @@
 package com.app.sumpyo_be.domain.action.service;
 
-import com.app.sumpyo_be.domain.action.dto.ActionStep;
-import com.app.sumpyo_be.domain.action.dto.ComplaintActionResponse;
+import com.app.sumpyo_be.domain.action.dto.response.ActionStep;
+import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
 import com.app.sumpyo_be.domain.action.entity.Action;
 import com.app.sumpyo_be.domain.action.entity.PlanStep;
 import com.app.sumpyo_be.domain.action.entity.StepType;
