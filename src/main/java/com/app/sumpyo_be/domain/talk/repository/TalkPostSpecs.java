@@ -35,6 +35,11 @@ public final class TalkPostSpecs {
     };
   }
 
+  /** 삭제한 글 제외 (목록·개수) */
+  public static Specification<TalkPost> notDeleted() {
+    return (root, query, cb) -> cb.isNull(root.get("deletedAt"));
+  }
+
   public static Specification<TalkPost> hasStatus(TalkStatus status) {
     return (root, query, cb) -> status == null ? cb.conjunction() : cb.equal(root.get("status"), status);
   }

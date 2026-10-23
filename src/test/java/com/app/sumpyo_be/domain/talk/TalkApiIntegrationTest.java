@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -371,7 +372,8 @@ class TalkApiIntegrationTest {
       as(W2, post("/api/talks/{id}/replies", talkId), "{\"content\":\" 617호 지금 수업 중이에요 \",\"isSuggested\":true}")
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.data.replyId").isNumber())
-          .andExpect(jsonPath("$.data.talkStatus").value("ANSWERED"));
+          .andExpect(jsonPath("$.data.talkStatus").value("ANSWERED"))
+          .andExpect(jsonPath("$.data.createdAt").value("2026-10-25T03:00:00"));
 
       as(W1, get("/api/talks/{id}", talkId))
           .andExpect(jsonPath("$.data.status").value("ANSWERED"))
@@ -509,6 +511,75 @@ class TalkApiIntegrationTest {
       as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.suggestions", contains(
           "617호 지금 수업 없어요", "지금 북악관 6층에 있어요")));
       assertThat(jdbc.queryForObject("select suggestions from talk_post where id = ?", String.class, talkId)).isNull();
+    }
+  }
+
+  @Nested
+  class Delete {
+
+    private long reply(String loginId, long talkId, String content) throws Exception {
+      String res = as(loginId, post("/api/talks/{id}/replies", talkId), "{\"content\":\"" + content + "\"}")
+          .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+      return ((Number) JsonPath.read(res, "$.data.replyId")).longValue();
+    }
+
+    @Test
+    void 글은_보낸_사람만_삭제_목록_개수_상세_답변에서_빠진다() throws Exception {
+      long talkId = send(W1, 6, r617, "617호 확인 부탁");
+      long others = send(W1, 6, null, "6층 확인");
+      as(W2, get("/api/talks")).andExpect(jsonPath("$.data.counts.all").value(2));
+
+      as(W2, delete("/api/talks/{id}", talkId)).andExpect(status().isForbidden());
+      as(W1, delete("/api/talks/{id}", talkId))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.data.talkId").value(talkId));
+
+      as(W2, get("/api/talks"))
+          .andExpect(jsonPath("$.data.counts.all").value(1))
+          .andExpect(jsonPath("$.data.content[*].talkId", contains((int) others)));
+      as(W2, get("/api/talks/{id}", talkId)).andExpect(status().isNotFound());
+      as(W2, post("/api/talks/{id}/replies", talkId), "{\"content\":\"네\"}").andExpect(status().isNotFound());
+      as(W1, delete("/api/talks/{id}", talkId)).andExpect(status().isNotFound());   // 이미 삭제
+      // 기록은 남는다
+      assertThat(jdbc.queryForObject("select deleted_at from talk_post where id = ?", LocalDateTime.class, talkId))
+          .isEqualTo(NOW);
+    }
+
+    @Test
+    void 답변은_쓴_사람만_삭제_자리는_남고_마지막_답변이면_확인_중으로() throws Exception {
+      long talkId = send(W1, 6, r617, "617호 확인 부탁");
+      long replyId = reply(W2, talkId, "지금 갈게요");
+
+      as(W1, delete("/api/talks/{id}/replies/{replyId}", talkId, replyId)).andExpect(status().isForbidden());
+      as(W2, delete("/api/talks/{id}/replies/{replyId}", talkId, replyId))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.data.replyId").value(replyId))
+          .andExpect(jsonPath("$.data.talkStatus").value("CHECKING"));
+      as(W2, delete("/api/talks/{id}/replies/{replyId}", talkId, replyId)).andExpect(status().isOk());   // 그대로
+
+      as(W2, get("/api/talks/{id}", talkId))
+          .andExpect(jsonPath("$.data.status").value("CHECKING"))
+          .andExpect(jsonPath("$.data.replies", hasSize(1)))
+          .andExpect(jsonPath("$.data.replies[0].content").value("삭제된 답변입니다"))
+          .andExpect(jsonPath("$.data.replies[0].deleted").value(true))
+          .andExpect(jsonPath("$.data.replies[0].mine").value(true));
+      as(W1, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.replies[0].mine").value(false));
+    }
+
+    @Test
+    void 답변이_남아_있으면_답변_완료_유지_다른_글의_답변_ID_는_404() throws Exception {
+      long talkId = send(W1, 6, r617, "617호 확인 부탁");
+      long first = reply(W2, talkId, "지금 갈게요");
+      reply(W2, talkId, "도착했어요");
+      long otherTalk = send(W1, 6, null, "6층 확인");
+
+      as(W2, delete("/api/talks/{id}/replies/{replyId}", talkId, first))
+          .andExpect(jsonPath("$.data.talkStatus").value("ANSWERED"));
+      as(W2, get("/api/talks/{id}", talkId))
+          .andExpect(jsonPath("$.data.replies[*].deleted", contains(true, false)))
+          .andExpect(jsonPath("$.data.replies[1].content").value("도착했어요"));
+      as(W2, delete("/api/talks/{id}/replies/{replyId}", otherTalk, first)).andExpect(status().isNotFound());
+      as(W2, delete("/api/talks/{id}/replies/{replyId}", talkId, 999_999)).andExpect(status().isNotFound());
     }
   }
 }

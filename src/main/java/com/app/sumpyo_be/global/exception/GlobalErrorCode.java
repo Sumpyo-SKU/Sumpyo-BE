@@ -52,6 +52,10 @@ public enum GlobalErrorCode implements BaseErrorCode {
     INVALID_ACTION_STEP("G037", "이 조치의 체크리스트에 없는 단계입니다.", HttpStatus.BAD_REQUEST),
     INVALID_CURSOR("G038", "목록 커서가 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
     INVALID_WEEK("G039", "week 는 2026-W43 형식이어야 합니다.", HttpStatus.BAD_REQUEST),
+    // 캠퍼스톡 삭제
+    TALK_DELETE_DENIED("G040", "내가 보낸 캠퍼스톡만 삭제할 수 있습니다.", HttpStatus.FORBIDDEN),
+    TALK_REPLY_NOT_FOUND("G041", "존재하지 않는 답변입니다.", HttpStatus.NOT_FOUND),
+    TALK_REPLY_DELETE_DENIED("G042", "내가 쓴 답변만 삭제할 수 있습니다.", HttpStatus.FORBIDDEN),
     ;
 
     private final String code;

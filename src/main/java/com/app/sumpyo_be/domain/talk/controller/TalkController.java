@@ -6,7 +6,9 @@ import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.global.common.BaseResponse;
 import com.app.sumpyo_be.domain.talk.dto.request.TalkCreateRequest;
 import com.app.sumpyo_be.domain.talk.dto.response.TalkCreateResponse;
+import com.app.sumpyo_be.domain.talk.dto.response.TalkDeleteResponse;
 import com.app.sumpyo_be.domain.talk.dto.response.TalkDetailResponse;
+import com.app.sumpyo_be.domain.talk.dto.response.TalkReplyDeleteResponse;
 import com.app.sumpyo_be.domain.talk.dto.response.TalkListResponse;
 import com.app.sumpyo_be.domain.talk.dto.request.TalkReplyRequest;
 import com.app.sumpyo_be.domain.talk.dto.response.TalkReplyResponse;
@@ -19,6 +21,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -85,5 +88,31 @@ public class TalkController {
       @Parameter(description = "캠퍼스톡 ID", example = "5") @PathVariable Long talkId,
       @RequestBody TalkReplyRequest request) {
     return BaseResponse.success("답변을 보냈습니다.", talkService.reply(talkId, request));
+  }
+
+  @Operation(summary = "캠퍼스톡 삭제",
+      description = "권한 W. 내가 보낸 글만 (아니면 403). 삭제하면 목록·개수에서 빠지고 상세·답변은 404 "
+          + "(기록은 남기고 삭제 표시만).")
+  @ApiErrors(value = {GlobalErrorCode.TALK_NO_ZONE, GlobalErrorCode.TALK_ACCESS_DENIED, GlobalErrorCode.TALK_DELETE_DENIED,
+      GlobalErrorCode.TALK_NOT_FOUND}, auth = true)
+  @Tag(name = ScreenTag.TALK)
+  @DeleteMapping("/{talkId}")
+  public BaseResponse<TalkDeleteResponse> delete(
+      @Parameter(description = "캠퍼스톡 ID", example = "5") @PathVariable Long talkId) {
+    return BaseResponse.success("캠퍼스톡을 삭제했습니다.", talkService.delete(talkId));
+  }
+
+  @Operation(summary = "캠퍼스톡 답변 삭제",
+      description = "권한 W. 내가 쓴 답변만 (아니면 403), 이미 삭제했으면 그대로 200. 상세에서는 자리를 남기고 "
+          + "content '삭제된 답변입니다', deleted true 로 보인다. 남은 답변이 없으면 글 상태 ANSWERED → CHECKING.")
+  @ApiErrors(value = {GlobalErrorCode.TALK_NO_ZONE, GlobalErrorCode.TALK_ACCESS_DENIED,
+      GlobalErrorCode.TALK_REPLY_DELETE_DENIED, GlobalErrorCode.TALK_NOT_FOUND, GlobalErrorCode.TALK_REPLY_NOT_FOUND},
+      auth = true)
+  @Tag(name = ScreenTag.TALK)
+  @DeleteMapping("/{talkId}/replies/{replyId}")
+  public BaseResponse<TalkReplyDeleteResponse> deleteReply(
+      @Parameter(description = "캠퍼스톡 ID", example = "5") @PathVariable Long talkId,
+      @Parameter(description = "답변 ID", example = "9") @PathVariable Long replyId) {
+    return BaseResponse.success("답변을 삭제했습니다.", talkService.deleteReply(talkId, replyId));
   }
 }

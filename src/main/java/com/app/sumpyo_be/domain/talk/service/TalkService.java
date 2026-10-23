@@ -9,7 +9,9 @@ import com.app.sumpyo_be.domain.member.service.MemberAccess;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import com.app.sumpyo_be.domain.talk.dto.request.TalkCreateRequest;
 import com.app.sumpyo_be.domain.talk.dto.response.TalkCreateResponse;
+import com.app.sumpyo_be.domain.talk.dto.response.TalkDeleteResponse;
 import com.app.sumpyo_be.domain.talk.dto.response.TalkDetailResponse;
+import com.app.sumpyo_be.domain.talk.dto.response.TalkReplyDeleteResponse;
 import com.app.sumpyo_be.domain.talk.dto.response.TalkListResponse;
 import com.app.sumpyo_be.domain.talk.dto.request.TalkReplyRequest;
 import com.app.sumpyo_be.domain.talk.dto.response.TalkReplyResponse;
@@ -41,6 +43,7 @@ public class TalkService {
 
   static final int MAX_CONTENT_LENGTH = 300;
   static final int PREVIEW_LENGTH = 50;
+  static final String DELETED_REPLY = "삭제된 답변입니다";
 
   private final MemberAccess memberAccess;
   private final TalkAccess talkAccess;
@@ -65,7 +68,8 @@ public class TalkService {
     Map<Integer, Set<Long>> roomIdsByFloor = new LinkedHashMap<>();
     filter.forEach((floor, rooms) ->
         roomIdsByFloor.put(floor, rooms.stream().map(Room::getId).collect(Collectors.toSet())));
-    Specification<TalkPost> scope = TalkPostSpecs.inScope(building.getId(), roomIdsByFloor);
+    Specification<TalkPost> scope = TalkPostSpecs.inScope(building.getId(), roomIdsByFloor)
+        .and(TalkPostSpecs.notDeleted());
 
     // size + 1 개를 읽어 다음이 있는지 판단 (첫 페이지라 Page 의 count 쿼리는 꽉 찼을 때만 나간다)
     List<TalkPost> fetched = postRepository.findAll(
@@ -126,9 +130,10 @@ public class TalkService {
     }
     List<String> suggestions = sentByMe ? List.of() : suggestionService.forDetail(post);
 
+    // 삭제한 답변은 자리를 남겨 대화 순서를 유지한다
     List<TalkDetailResponse.Reply> replies = replyRepository.findWithMemberByPostId(talkId).stream()
-        .map(r -> new TalkDetailResponse.Reply(r.getId(), r.getContent(), r.getMember().getName(),
-            r.isSuggested(), r.getCreatedAt()))
+        .map(r -> new TalkDetailResponse.Reply(r.getId(), r.isDeleted() ? DELETED_REPLY : r.getContent(),
+            r.getMember().getName(), r.isSuggested(), r.isWrittenBy(me.getId()), r.isDeleted(), r.getCreatedAt()))
         .toList();
     return TalkDetailResponse.builder()
         .talkId(post.getId())
@@ -155,7 +160,40 @@ public class TalkService {
         Boolean.TRUE.equals(req.getIsSuggested()), LocalDateTime.now(clock));
     replyRepository.save(reply);
     post.answered();
-    return new TalkReplyResponse(reply.getId(), post.getStatus());
+    return new TalkReplyResponse(reply.getId(), post.getStatus(), reply.getCreatedAt());
+  }
+
+  /** 보낸 사람 본인만 (아니면 403). 삭제하면 목록·상세에서 사라진다 (이미 삭제했으면 404) */
+  @Transactional
+  public TalkDeleteResponse delete(Long talkId) {
+    Member me = memberAccess.require(Role.WORKER);
+    TalkPost post = findInMyBuilding(talkId, me);
+    if (!post.isSentBy(me.getId())) {
+      throw new CustomException(GlobalErrorCode.TALK_DELETE_DENIED);
+    }
+    post.delete(LocalDateTime.now(clock));
+    return new TalkDeleteResponse(talkId);
+  }
+
+  /**
+   * 답변 쓴 사람 본인만 (아니면 403). 이미 삭제했으면 그대로 200.
+   * 남은 답변이 없으면 글 상태 ANSWERED → CHECKING.
+   */
+  @Transactional
+  public TalkReplyDeleteResponse deleteReply(Long talkId, Long replyId) {
+    Member me = memberAccess.require(Role.WORKER);
+    TalkPost post = findInMyBuilding(talkId, me);
+    TalkReply reply = replyRepository.findInPost(replyId, talkId)
+        .orElseThrow(() -> new CustomException(GlobalErrorCode.TALK_REPLY_NOT_FOUND));
+    if (!reply.isWrittenBy(me.getId())) {
+      throw new CustomException(GlobalErrorCode.TALK_REPLY_DELETE_DENIED);
+    }
+    reply.delete(LocalDateTime.now(clock));
+    replyRepository.flush();
+    if (!replyRepository.existsByPostIdAndDeletedAtIsNull(talkId)) {
+      post.noRepliesLeft();
+    }
+    return new TalkReplyDeleteResponse(replyId, post.getStatus());
   }
 
   private TalkPost findInMyBuilding(Long talkId, Member me) {

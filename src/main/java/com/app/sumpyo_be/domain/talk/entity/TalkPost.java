@@ -60,6 +60,10 @@ public class TalkPost {
   @Column(name = "created_at", nullable = false)
   private LocalDateTime createdAt;
 
+  /** 삭제 시각. 삭제한 글은 목록·상세에 나오지 않는다 */
+  @Column(name = "deleted_at")
+  private LocalDateTime deletedAt;
+
   /** 검증(건물·층·강의실·내용)은 서비스에서 끝낸 뒤 호출 */
   public static TalkPost create(Long senderId, Building building, int floor, Room room, String content,
       LocalDateTime now) {
@@ -81,6 +85,19 @@ public class TalkPost {
   /** 답변이 달리면 ANSWERED */
   public void answered() {
     this.status = TalkStatus.ANSWERED;
+  }
+
+  /** 남은 답변이 없으면(마지막 답변 삭제) 확인 중으로 되돌린다 */
+  public void noRepliesLeft() {
+    if (status == TalkStatus.ANSWERED) {
+      this.status = TalkStatus.CHECKING;
+    }
+  }
+
+  public void delete(LocalDateTime now) {
+    if (deletedAt == null) {
+      this.deletedAt = now;
+    }
   }
 
   /** "6층 · 617호", 강의실이 없으면 "1층". room 은 이미 로딩된 상태여야 한다 */

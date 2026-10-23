@@ -43,6 +43,25 @@ public class TalkReply {
   @Column(name = "created_at", nullable = false)
   private LocalDateTime createdAt;
 
+  /** 삭제 시각. 상세에서 "삭제된 답변입니다" 로 보인다 */
+  @Column(name = "deleted_at")
+  private LocalDateTime deletedAt;
+
+  public boolean isWrittenBy(Long memberId) {
+    return member.getId().equals(memberId);
+  }
+
+  public boolean isDeleted() {
+    return deletedAt != null;
+  }
+
+  /** 이미 삭제했으면 그대로 */
+  public void delete(LocalDateTime now) {
+    if (deletedAt == null) {
+      this.deletedAt = now;
+    }
+  }
+
   public static TalkReply create(TalkPost post, Member member, String content, boolean suggested,
       LocalDateTime now) {
     TalkReply r = new TalkReply();

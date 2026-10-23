@@ -23,7 +23,8 @@ public interface TalkPostRepository extends JpaRepository<TalkPost, Long>, JpaSp
   @EntityGraph(attributePaths = "room")
   Page<TalkPost> findAll(Specification<TalkPost> spec, Pageable pageable);
 
-  @Query("select p from TalkPost p join fetch p.building left join fetch p.room where p.id = :id")
+  /** 삭제한 글은 없는 것으로 본다 */
+  @Query("select p from TalkPost p join fetch p.building left join fetch p.room where p.id = :id and p.deletedAt is null")
   Optional<TalkPost> findDetailById(@Param("id") Long id);
 
   /** UNREAD 일 때만 바꾼다 (동시에 열어도 한 번만) */

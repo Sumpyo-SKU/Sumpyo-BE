@@ -65,6 +65,12 @@ public class TalkDetailResponse {
     @Schema(description = "추천 답변을 골라 보냈는지", example = "true")
     private Boolean isSuggested;
 
+    @Schema(description = "내가 쓴 답변인지 (삭제 버튼 표시)", example = "false")
+    private boolean mine;
+
+    @Schema(description = "삭제된 답변인지. true 면 content 는 '삭제된 답변입니다'", example = "false")
+    private boolean deleted;
+
     @Schema(description = "답한 시각 (KST)", example = "2026-10-21T14:05:00")
     private LocalDateTime createdAt;
   }
