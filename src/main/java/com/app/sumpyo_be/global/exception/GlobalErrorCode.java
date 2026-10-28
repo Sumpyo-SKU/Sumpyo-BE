@@ -12,7 +12,8 @@ public enum GlobalErrorCode implements BaseErrorCode {
     RESOURCE_NOT_FOUND("G002", "요청한 리소스를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     INTERNAL_SERVER_ERROR("G003", "서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     ACCESS_DENIED("G004", "해당 리소스에 접근할 권한이 없습니다.", HttpStatus.FORBIDDEN),
-    INVALID_TOKEN("G005", "유효하지 않거나 만료된 토큰입니다.", HttpStatus.UNAUTHORIZED),
+    // 만료·위조된 토큰. 프론트는 LOGIN_REQUIRED 와 똑같이 토큰을 지우고 로그인 화면으로
+    INVALID_TOKEN("G005", "로그인이 필요합니다.", HttpStatus.UNAUTHORIZED),
     INVALID_DEVICE_KEY("G006", "유효하지 않은 기기 키입니다.", HttpStatus.UNAUTHORIZED),
     READING_NOT_FOUND("G007", "측정 데이터가 없습니다.", HttpStatus.NOT_FOUND),
     INVALID_TIME_RANGE("G008", "조회 구간이 올바르지 않습니다. (from < to, 최대 31일)", HttpStatus.BAD_REQUEST),
@@ -56,6 +57,12 @@ public enum GlobalErrorCode implements BaseErrorCode {
     TALK_DELETE_DENIED("G040", "내가 보낸 캠퍼스톡만 삭제할 수 있습니다.", HttpStatus.FORBIDDEN),
     TALK_REPLY_NOT_FOUND("G041", "존재하지 않는 답변입니다.", HttpStatus.NOT_FOUND),
     TALK_REPLY_DELETE_DENIED("G042", "내가 쓴 답변만 삭제할 수 있습니다.", HttpStatus.FORBIDDEN),
+    // 로그인·회원가입
+    INVALID_CREDENTIALS("G043", "아이디 또는 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
+    DUPLICATED_LOGIN_ID("G044", "이미 사용 중인 아이디입니다.", HttpStatus.CONFLICT),
+    INVALID_LOGIN_ID("G045", "아이디는 영문 소문자로 시작하는 영문 소문자·숫자 4~20자여야 합니다.", HttpStatus.BAD_REQUEST),
+    PASSWORD_CONFIRM_MISMATCH("G046", "비밀번호가 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
+    TOO_MANY_LOGIN_ATTEMPTS("G047", "로그인 시도가 너무 많아요. 10분 뒤 다시 시도해주세요.", HttpStatus.TOO_MANY_REQUESTS),
     ;
 
     private final String code;

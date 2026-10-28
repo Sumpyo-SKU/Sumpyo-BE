@@ -23,4 +23,6 @@ public interface MemberZoneRepository extends JpaRepository<MemberZone, Long> {
   @Modifying(clearAutomatically = true)
   @Query("delete from MemberZone z where z.memberId = :memberId")
   void deleteByMemberId(@Param("memberId") Long memberId);
+
+  boolean existsByMemberId(Long memberId);
 }

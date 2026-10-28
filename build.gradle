@@ -38,8 +38,9 @@ dependencies {
     // Validation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // 비밀번호 해시(BCrypt)만 사용. 시큐리티 필터 체인은 아직 없음 (로그인 구현 시 starter-security 로 교체)
-    implementation 'org.springframework.security:spring-security-crypto'
+    // 인증: Spring Security (stateless) + JWT(HS256) 발급·검증은 oauth2-jose(Nimbus). jjwt 는 Jackson 2 를 끌고 와서 쓰지 않음
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.security:spring-security-oauth2-jose'
 
     // Actuator (모니터링/헬스체크)
     implementation 'org.springframework.boot:spring-boot-starter-actuator'

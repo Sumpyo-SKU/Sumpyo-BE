@@ -1,5 +1,6 @@
 package com.app.sumpyo_be.domain.building.controller;
 
+import com.app.sumpyo_be.global.common.PublicApi;
 import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
@@ -30,6 +31,7 @@ public class BuildingController {
   @Operation(summary = "건물 목록", description = "화면 표시 순서(display_order)대로 건물 12개를 반환합니다.")
   @Tag(name = ScreenTag.CAMPUS)
   @Tag(name = ScreenTag.STUDENT)
+  @PublicApi
   @GetMapping
   public BaseResponse<List<BuildingResponse>> buildings() {
     return BaseResponse.success(buildingService.getBuildings());

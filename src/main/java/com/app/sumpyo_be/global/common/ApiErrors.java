@@ -18,7 +18,7 @@ public @interface ApiErrors {
 
   GlobalErrorCode[] value() default {};
 
-  /** 근로생·관리자 API: 401 로그인 필요(데모 계정 없음·잘못된 X-Demo-Login), 403 권한 없음 을 붙인다 */
+  /** 근로생·관리자 API: 401 로그인 필요(토큰 없음·만료·위조, 잘못된 X-Demo-Login), 403 권한 없음 을 붙인다 */
   boolean auth() default false;
 
   /** 요청 검증 실패 400 (본문·쿼리 파라미터) 을 붙인다 */

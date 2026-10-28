@@ -32,6 +32,10 @@ device:
     "[517]": bukak-617
 
 sumpyo:
+  auth:
+    # JWT(HS256) 서명 키. 32바이트 이상, 없으면 앱이 뜨지 않는다 (예: openssl rand -base64 48)
+    jwt-secret: ${JWT_SECRET:}
+    token-validity: 7d
   simulator:
     # SIM 강의실 측정값을 1분마다 생성. 끄려면 SIMULATOR_ENABLED=false
     enabled: ${SIMULATOR_ENABLED:true}

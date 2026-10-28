@@ -2,11 +2,14 @@ package com.app.sumpyo_be.domain.member.service;
 
 import com.app.sumpyo_be.domain.member.entity.Member;
 import com.app.sumpyo_be.domain.member.repository.MemberRepository;
+import com.app.sumpyo_be.global.security.MemberPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -29,11 +32,22 @@ public class CurrentMemberProvider {
     this.demoHeaderEnabled = demoHeaderEnabled;
   }
 
-  // TODO: 로그인(POST /api/auth/login) 구현 후 SecurityContext(또는 토큰)에서 member id 를 꺼내도록 변경.
-  //       지금은 데모 근로생으로 처리한다: 기본 worker01, 데모 모드에서 X-Demo-Login 헤더로 다른 데모 계정 선택.
+  /**
+   * 지금 요청의 회원.
+   * 1) Authorization: Bearer 토큰이 있으면 항상 그 회원 (JwtAuthenticationFilter 가 SecurityContext 에 넣음)
+   * 2) 토큰이 없고 데모 모드(DEMO_HEADER_LOGIN=true)면 worker01, X-Demo-Login 헤더로 다른 데모 계정 (Swagger QA·시연용)
+   * 3) 그 외 비로그인 → empty (MemberAccess 가 401)
+   */
   public Optional<Long> currentMemberId() {
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null && auth.getPrincipal() instanceof MemberPrincipal principal) {
+      return Optional.of(principal.memberId());
+    }
+    if (!demoHeaderEnabled) {
+      return Optional.empty();
+    }
     String loginId = DemoMemberInitializer.DEMO_LOGIN_ID;
-    String header = demoHeaderEnabled ? demoLoginHeader() : null;
+    String header = demoLoginHeader();
     if (header != null && !header.isBlank()) {
       loginId = header.trim();
       // 데모 계정만 고를 수 있다 (실제 회원으로 바꿔치기 방지). 그 외 값이면 비로그인 → 401
