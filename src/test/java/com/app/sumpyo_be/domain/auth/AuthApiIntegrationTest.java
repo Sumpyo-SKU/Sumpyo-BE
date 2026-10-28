@@ -221,7 +221,22 @@ class AuthApiIntegrationTest {
           .andExpect(jsonPath("$.data.loginId").value("worker02"))
           .andExpect(jsonPath("$.data.name").value("이근로"))
           .andExpect(jsonPath("$.data.role").value("WORKER"))
-          .andExpect(jsonPath("$.data.hasZones").value(true));
+          .andExpect(jsonPath("$.data.hasZones").value(true))
+          .andExpect(jsonPath("$.data.zone").value("북악관 · 6층"));
+      withToken(get("/api/me"), login("worker01", DEMO_PASSWORD))   // 담당 구역 없음
+          .andExpect(jsonPath("$.data.hasZones").value(false))
+          .andExpect(jsonPath("$.data.zone").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void 내_정보_근로_구역은_여러_층이면_가운데_점_여러_건물이면_첫_건물() throws Exception {
+      long bukak = jdbc.queryForObject("select id from building where name = '북악관'", Long.class);
+      long hyein = jdbc.queryForObject("select id from building where name = '혜인관'", Long.class);
+      String token = signup("newbie06");
+      withToken(put("/api/me/zones").contentType(MediaType.APPLICATION_JSON).content(
+          "[{\"buildingId\":" + hyein + ",\"floors\":[3]},{\"buildingId\":" + bukak + ",\"floors\":[6,5]}]"), token)
+          .andExpect(status().isOk());
+      withToken(get("/api/me"), token).andExpect(jsonPath("$.data.zone").value("북악관 · 5·6층"));   // 북악관이 표시 순서 앞
     }
 
     @Test

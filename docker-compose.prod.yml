@@ -34,7 +34,7 @@ services:
       DEMO_PASSWORD: ${DEMO_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
       COMPLAINT_SALT: ${COMPLAINT_SALT}
-      FRONT_BASE_URL: ${FRONT_BASE_URL:-http://localhost:5173}
+      FRONT_BASE_URL: ${FRONT_BASE_URL:-https://sumpyo-sku.netlify.app}   # 민원 QR 주소 = 이 값 + /complaint?code=
       DATA_GO_KR_KEY: ${DATA_GO_KR_KEY:-}
       WEATHER_NX: ${WEATHER_NX:-}
       WEATHER_NY: ${WEATHER_NY:-}
