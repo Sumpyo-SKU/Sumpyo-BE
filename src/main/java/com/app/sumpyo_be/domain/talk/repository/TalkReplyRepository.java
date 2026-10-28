@@ -15,5 +15,6 @@ public interface TalkReplyRepository extends JpaRepository<TalkReply, Long> {
   @Query("select r from TalkReply r join fetch r.member where r.id = :id and r.post.id = :postId")
   Optional<TalkReply> findInPost(@Param("id") Long id, @Param("postId") Long postId);
 
-  boolean existsByPostIdAndDeletedAtIsNull(Long postId);
+  /** 글쓴이가 아닌 근로생의 (삭제 안 한) 답변이 남아 있는지 → 있으면 ANSWERED */
+  boolean existsByPostIdAndDeletedAtIsNullAndMemberIdNot(Long postId, Long senderId);
 }

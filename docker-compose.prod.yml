@@ -44,7 +44,7 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
       SIMULATOR_ENABLED: ${SIMULATOR_ENABLED:-true}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       JAVA_TOOL_OPTIONS: "-Xms256m -Xmx512m"   # 1GB 인스턴스 기준
     ports:
       - "8080:8080"   # 아두이노는 HTTP 8080 으로 직접 전송

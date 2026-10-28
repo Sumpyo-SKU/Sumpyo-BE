@@ -80,8 +80,11 @@ public class TalkController {
   }
 
   @Operation(summary = "캠퍼스톡 답변",
-      description = "권한 W. 내 건물 글이고 보낸 사람 본인이 아니어야 함 (아니면 403). content 1~300자. 답변이 달리면 ANSWERED.")
-  @ApiErrors(value = {GlobalErrorCode.TALK_NO_ZONE, GlobalErrorCode.INVALID_TALK_CONTENT, GlobalErrorCode.TALK_ACCESS_DENIED, GlobalErrorCode.TALK_SELF_REPLY_DENIED, GlobalErrorCode.TALK_NOT_FOUND}, auth = true, validation = true)
+      description = "권한 W. 내 건물 글이면 글쓴이 본인도 답할 수 있음. content 1~300자. "
+          + "상태: 다른 근로생 답변이 달리면 ANSWERED, 글쓴이 본인 답변은 상태를 바꾸지 않음(UNREAD·CHECKING 유지). "
+          + "추천 답변(suggestions)은 글쓴이에겐 빈 배열이라 프론트는 [직접 입력]만.")
+  @ApiErrors(value = {GlobalErrorCode.TALK_NO_ZONE, GlobalErrorCode.INVALID_TALK_CONTENT, GlobalErrorCode.TALK_ACCESS_DENIED,
+      GlobalErrorCode.TALK_NOT_FOUND}, auth = true, validation = true)
   @Tag(name = ScreenTag.TALK)
   @PostMapping("/{talkId}/replies")
   public BaseResponse<TalkReplyResponse> reply(
@@ -104,7 +107,7 @@ public class TalkController {
 
   @Operation(summary = "캠퍼스톡 답변 삭제",
       description = "권한 W. 내가 쓴 답변만 (아니면 403), 이미 삭제했으면 그대로 200. 상세에서는 자리를 남기고 "
-          + "content '삭제된 답변입니다', deleted true 로 보인다. 남은 답변이 없으면 글 상태 ANSWERED → CHECKING.")
+          + "content '삭제된 답변입니다', deleted true 로 보인다. 남은 다른 근로생 답변이 없으면(글쓴이 답변만 남아도) 글 상태 ANSWERED → CHECKING.")
   @ApiErrors(value = {GlobalErrorCode.TALK_NO_ZONE, GlobalErrorCode.TALK_ACCESS_DENIED,
       GlobalErrorCode.TALK_REPLY_DELETE_DENIED, GlobalErrorCode.TALK_NOT_FOUND, GlobalErrorCode.TALK_REPLY_NOT_FOUND},
       auth = true)

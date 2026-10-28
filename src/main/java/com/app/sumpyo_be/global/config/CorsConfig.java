@@ -12,42 +12,42 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * CORS. 허용 출처는 환경 변수 CORS_ALLOWED_ORIGINS (쉼표 구분).
- * - addCorsMappings: Spring MVC 에 적용. 지금처럼 시큐리티가 없을 때 실제로 동작하는 쪽
- * - corsConfigurationSource 빈: 시큐리티를 붙이면 http.cors() 가 이 빈을 쓴다 (같은 설정)
+ * CORS. 허용 출처는 환경 변수 CORS_ALLOWED_ORIGINS (쉼표 구분, 기본 http://localhost:5173).
+ * 값은 allowedOriginPatterns 로 넣어서 정확한 주소와 와일드카드를 둘 다 쓸 수 있다
+ * (예: https://sumpyo-sku.netlify.app,https://deploy-preview-*--sumpyo-sku.netlify.app,http://localhost:5173).
+ * 쿠키를 쓰지 않고 토큰은 Authorization 헤더로 보내므로 allowCredentials = false.
+ * - corsConfigurationSource 빈: SecurityConfig 의 http.cors() 가 쓴다 (프리플라이트 OPTIONS 는 인증 없이 통과)
+ * - addCorsMappings: 같은 설정을 Spring MVC 에도 (시큐리티 필터를 끈 테스트에서도 같은 동작)
+ * 공개 API(학생 민원 등)와 근로생 API 모두 같은 설정이다.
  */
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
-    private static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
+    static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
+    static final List<String> ALLOWED_HEADERS = List.of("Authorization", "Content-Type", "X-Demo-Login");
 
     @Value("${cors.allowed-origins}")
     private String[] allowedOrigins;
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .combine(corsConfiguration());
+        registry.addMapping("/**").combine(corsConfiguration());
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // 모든 경로에 CORS 설정 적용
         source.registerCorsConfiguration("/**", corsConfiguration());
         return source;
     }
 
     private CorsConfiguration corsConfiguration() {
         CorsConfiguration config = new CorsConfiguration();
-        // 환경 변수에 정의된 출처만 허용
-        config.setAllowedOrigins(Arrays.stream(allowedOrigins).map(String::trim).toList());
-        // 허용할 HTTP Method
+        config.setAllowedOriginPatterns(Arrays.stream(allowedOrigins).map(String::trim).filter(s -> !s.isEmpty()).toList());
         config.setAllowedMethods(ALLOWED_METHODS);
-        // 허용할 요청 Header
-        config.setAllowedHeaders(List.of("*"));
-        // 쿠키/인증 정보를 포함한 요청 허용
-        config.setAllowCredentials(true);
+        config.setAllowedHeaders(ALLOWED_HEADERS);
+        config.setAllowCredentials(false);
+        config.setMaxAge(3600L);   // 프리플라이트 결과를 1시간 캐시
         return config;
     }
 }

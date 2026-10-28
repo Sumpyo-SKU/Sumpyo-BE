@@ -432,8 +432,11 @@ class NotificationApiIntegrationTest {
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.info.description").value(org.hamcrest.Matchers.containsString("X-Demo-Login: worker02")))
           .andExpect(jsonPath("$.servers[0].description").value("운영 서버"))
-          .andExpect(jsonPath("$.components.securitySchemes").doesNotExist())
-          .andExpect(jsonPath("$.security").doesNotExist())
+          // JWT: bearerAuth, 근로생 API 에만 자물쇠
+          .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
+          .andExpect(jsonPath("$.paths['/api/talks'].get.security[0].bearerAuth").exists())
+          .andExpect(jsonPath("$.paths['/api/complaints'].post.security").doesNotExist())
+          .andExpect(jsonPath("$.paths['/api/auth/login'].post.security").doesNotExist())
           // X-Demo-Login: 근로생 API 에만
           .andExpect(jsonPath("$.paths['/api/talks'].get.parameters[?(@.name == 'X-Demo-Login')]", hasSize(1)))
           .andExpect(jsonPath("$.paths['/api/complaints'].post.parameters").doesNotExist())
@@ -459,7 +462,7 @@ class NotificationApiIntegrationTest {
     @Test
     void 화면_태그가_맨_위에_리소스_태그도_유지() throws Exception {
       mvc.perform(get("/v3/api-docs/api"))
-          .andExpect(jsonPath("$.tags[0:7].name", org.hamcrest.Matchers.contains("화면: 홈", "화면: 캠퍼스 현황",
+          .andExpect(jsonPath("$.tags[0:8].name", org.hamcrest.Matchers.contains("화면: 로그인·회원가입", "화면: 홈", "화면: 캠퍼스 현황",
               "화면: 접수함(민원)", "화면: 캠퍼스톡", "화면: 설정", "화면: 알림", "화면: 학생 민원(QR)")))
           .andExpect(jsonPath("$.paths['/api/me/rooms'].get.tags", org.hamcrest.Matchers.hasItems("화면: 홈", "Me")))
           .andExpect(jsonPath("$.paths['/api/notifications/unread-count'].get.tags",

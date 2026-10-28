@@ -43,8 +43,25 @@ public class TalkDetailResponse {
       schema = @Schema(example = "지금 북악관 1층에 있어요"))
   private List<String> suggestions;
 
+  @Schema(description = "글쓴이")
+  private Sender sender;
+
   @Schema(description = "답변 목록, 오래된 순")
   private List<Reply> replies;
+
+  @Getter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Schema(name = "TalkSender", description = "글쓴이")
+  public static class Sender {
+
+    @Schema(description = "이름", example = "김근로")
+    private String name;
+
+    @Schema(description = "글쓴이 담당 구역 (여러 층이면 '북악관 5·6층', 여러 건물이면 첫 건물). 없으면 null",
+        example = "북악관 6층")
+    private String zone;
+  }
 
   @Getter
   @NoArgsConstructor
