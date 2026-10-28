@@ -4,6 +4,7 @@ import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.global.common.BaseResponse;
+import com.app.sumpyo_be.domain.member.dto.response.MeResponse;
 import com.app.sumpyo_be.domain.member.dto.response.MyRoomResponse;
 import com.app.sumpyo_be.domain.member.dto.response.SettingsResponse;
 import com.app.sumpyo_be.domain.member.dto.request.SettingsUpdateRequest;
@@ -29,6 +30,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
 
   private final MeService meService;
+
+  @Operation(summary = "내 정보",
+      description = "권한 W, A. 앱 시작 시 저장된 토큰이 유효한지 확인 (만료·위조면 401 → 토큰 지우고 로그인 화면). "
+          + "hasZones false 면 온보딩(담당 구역 설정)으로.")
+  @ApiErrors(auth = true)
+  @Tag(name = ScreenTag.AUTH)
+  @GetMapping
+  public BaseResponse<MeResponse> me() {
+    return BaseResponse.success(meService.me());
+  }
 
   @Operation(summary = "내 강의실 (홈 방 선택)",
       description = "권한 W. 내 담당 구역(건물+층)의 센서 있는 강의실(LECTURE, FULL·SIM). 건물 순서 → 층 → 호수. "

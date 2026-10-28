@@ -77,6 +77,9 @@ public class TalkListResponse {
     @Schema(description = "내가 보낸 글인지", example = "false")
     private boolean sentByMe;
 
+    @Schema(description = "글쓴이 이름", example = "김근로")
+    private String senderName;
+
     @Schema(description = "보낸 시각 (KST). '6분 전' 은 프론트에서 계산", example = "2026-10-21T14:02:00")
     private LocalDateTime createdAt;
   }

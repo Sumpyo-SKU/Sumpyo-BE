@@ -4,6 +4,7 @@ import com.app.sumpyo_be.domain.building.entity.Building;
 import com.app.sumpyo_be.domain.building.repository.BuildingRepository;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
+import com.app.sumpyo_be.domain.member.dto.response.MeResponse;
 import com.app.sumpyo_be.domain.member.dto.response.MyRoomResponse;
 import com.app.sumpyo_be.domain.member.dto.response.SettingsResponse;
 import com.app.sumpyo_be.domain.member.dto.request.SettingsUpdateRequest;
@@ -104,6 +105,13 @@ public class MeService {
   public List<MyRoomResponse> getMyRooms() {
     Member me = memberAccess.require(Role.WORKER);
     return roomRepository.findSensorLecturesInMemberZones(me.getId()).stream().map(MyRoomResponse::from).toList();
+  }
+
+  /** 내 정보 (권한 W, A). 앱 시작 시 저장된 토큰 확인용 */
+  public MeResponse me() {
+    Member me = memberAccess.require(Role.WORKER, Role.ADMIN);
+    return new MeResponse(me.getId(), me.getLoginId(), me.getName(), me.getRole(),
+        zoneRepository.existsByMemberId(me.getId()));
   }
 
   // ---------------- 설정 (권한 W, A) ----------------

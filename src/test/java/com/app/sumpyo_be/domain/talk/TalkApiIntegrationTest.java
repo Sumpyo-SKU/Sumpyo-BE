@@ -386,9 +386,33 @@ class TalkApiIntegrationTest {
     }
 
     @Test
-    void 보낸_사람_본인은_답변_403() throws Exception {
+    void 글쓴이_본인도_답할_수_있고_상태는_그대로() throws Exception {
       long talkId = send(W1, 6, null, "6층 확인 부탁");
-      as(W1, post("/api/talks/{id}/replies", talkId), "{\"content\":\"셀프 답변\"}").andExpect(status().isForbidden());
+      as(W1, post("/api/talks/{id}/replies", talkId), "{\"content\":\"추가로 창문도요\"}")
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.data.talkStatus").value("UNREAD"));
+      as(W2, get("/api/talks/{id}", talkId));   // 열면 CHECKING
+      as(W1, post("/api/talks/{id}/replies", talkId), "{\"content\":\"한 번 더\"}")
+          .andExpect(jsonPath("$.data.talkStatus").value("CHECKING"));
+      as(W1, get("/api/talks/{id}", talkId))
+          .andExpect(jsonPath("$.data.replies[*].author", contains("김근로", "김근로")))
+          .andExpect(jsonPath("$.data.replies[0].mine").value(true))
+          .andExpect(jsonPath("$.data.suggestions", empty()));   // 글쓴이에겐 추천 없음
+    }
+
+    @Test
+    void 다른_사람_답변이면_ANSWERED_그_답변을_지우면_글쓴이_답변만_남아도_CHECKING() throws Exception {
+      long talkId = send(W1, 6, null, "6층 확인 부탁");
+      as(W1, post("/api/talks/{id}/replies", talkId), "{\"content\":\"창문도요\"}");
+      String res = as(W2, post("/api/talks/{id}/replies", talkId), "{\"content\":\"지금 갈게요\"}")
+          .andExpect(jsonPath("$.data.talkStatus").value("ANSWERED"))
+          .andReturn().getResponse().getContentAsString();
+      long otherReply = ((Number) JsonPath.read(res, "$.data.replyId")).longValue();
+      as(W1, post("/api/talks/{id}/replies", talkId), "{\"content\":\"감사해요\"}")
+          .andExpect(jsonPath("$.data.talkStatus").value("ANSWERED"));   // 글쓴이 답변은 상태를 안 바꿈
+
+      as(W2, delete("/api/talks/{id}/replies/{replyId}", talkId, otherReply))
+          .andExpect(jsonPath("$.data.talkStatus").value("CHECKING"));
     }
 
     @Test
@@ -511,6 +535,35 @@ class TalkApiIntegrationTest {
       as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.suggestions", contains(
           "617호 지금 수업 없어요", "지금 북악관 6층에 있어요")));
       assertThat(jdbc.queryForObject("select suggestions from talk_post where id = ?", String.class, talkId)).isNull();
+    }
+  }
+
+  @Nested
+  class Sender {
+
+    @Test
+    void 상세_글쓴이_이름과_담당_구역_단일_층_여러_층_구역_없음() throws Exception {
+      long talkId = send(W1, 6, null, "6층 확인 부탁");
+      as(W2, get("/api/talks/{id}", talkId))
+          .andExpect(jsonPath("$.data.sender.name").value("김근로"))
+          .andExpect(jsonPath("$.data.sender.zone").value("북악관 5층"));
+
+      // 여러 층 + 다른 건물 → 첫 건물(표시 순서) 기준
+      as(W1, put("/api/me/zones"), "[{\"buildingId\":" + bukak + ",\"floors\":[6,5]},{\"buildingId\":" + hyein
+          + ",\"floors\":[3]}]").andExpect(status().isOk());
+      as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.sender.zone").value("북악관 5·6층"));
+
+      // 담당 구역이 없으면 null (글을 쓴 뒤 구역을 지운 경우)
+      jdbc.update("delete from member_zone where member_id = (select id from member where login_id = 'worker01')");
+      as(W2, get("/api/talks/{id}", talkId))
+          .andExpect(jsonPath("$.data.sender.name").value("김근로"))
+          .andExpect(jsonPath("$.data.sender.zone").value(nullValue()));
+    }
+
+    @Test
+    void 목록_항목에_글쓴이_이름() throws Exception {
+      send(W1, 6, null, "6층 확인 부탁");
+      as(W2, get("/api/talks")).andExpect(jsonPath("$.data.content[0].senderName").value("김근로"));
     }
   }
 

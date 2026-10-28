@@ -5,6 +5,7 @@ import com.app.sumpyo_be.global.common.ApiErrors;
 import com.app.sumpyo_be.global.common.PublicApi;
 import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.examples.Example;
 import io.swagger.v3.oas.models.info.Info;
@@ -14,6 +15,8 @@ import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.responses.ApiResponses;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.tags.Tag;
 import java.util.ArrayList;
@@ -37,15 +40,20 @@ public class SwaggerConfig {
     static final String DESCRIPTION = """
             숨표 근로생 앱 API.
 
-            **인증**: 현재 로그인 없음. 근로생 API 는 데모 계정(worker01)으로 동작하고, \
-            데모 모드(DEMO_HEADER_LOGIN=true)에서는 `X-Demo-Login: worker02` 헤더로 다른 데모 계정으로 바꿀 수 있다. \
-            학생 민원 제출·호실 찾기·센서 측정값 저장은 공개 API 라 헤더가 없다. (Bearer 토큰 미사용)
+            **인증**: JWT. `POST /api/auth/login`(또는 가입)으로 받은 accessToken 을 `Authorization: Bearer {token}` 으로 보낸다 \
+            (유효기간 7일, 리프레시 없음). 오른쪽 위 [Authorize] 에 토큰을 넣으면 자물쇠 표시된 근로생 API 를 테스트할 수 있다. \
+            로그아웃은 서버 API 없이 프론트가 토큰을 지운다. 만료·위조된 토큰은 401 "로그인이 필요합니다.". \
+            **데모 모드**(DEMO_HEADER_LOGIN=true, Swagger QA·시연용): 토큰이 없으면 worker01, `X-Demo-Login: worker02` 로 계정 전환 \
+            (토큰이 있으면 항상 토큰 기준). 데모 모드가 꺼져 있으면 토큰 없이 근로생 API 는 401. \
+            로그인·가입, 학생 민원 제출·호실 찾기, 건물 목록, 센서 측정값 저장은 공개 API (자물쇠 없음).
 
             **응답**: 모든 응답은 `{ success, code, message, data }`. 시각은 KST `yyyy-MM-dd'T'HH:mm:ss` (초까지, 소수점 없음).
 
             **목록**: 민원·캠퍼스톡·알림은 모두 커서 무한 스크롤. 응답의 `nextCursor` 를 다음 요청의 `cursor` 로 보내고, \
             `hasNext` 가 false 면(nextCursor null) 끝. 페이지 번호 방식은 없음.
             """;
+
+    static final String BEARER_AUTH = "bearerAuth";
 
     @Value("${server.servlet.context-path:}")
     private String contextPath;
@@ -57,7 +65,10 @@ public class SwaggerConfig {
         server.setDescription("운영 서버");
         return new OpenAPI()
                 .addServersItem(server)
-                .info(new Info().title("SumPyo API 명세서").version("1.0").description(DESCRIPTION));
+                .info(new Info().title("SumPyo API 명세서").version("1.0").description(DESCRIPTION))
+                .components(new Components().addSecuritySchemes(BEARER_AUTH, new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")
+                        .description("로그인 응답의 accessToken (Bearer 는 빼고 입력)")));
     }
 
     @Bean
@@ -86,6 +97,9 @@ public class SwaggerConfig {
     @Bean
     public OperationCustomizer demoLoginHeader(@Value("${sumpyo.demo.header-login:false}") boolean enabled) {
         return (operation, handlerMethod) -> {
+            if (!isPublic(handlerMethod)) {
+                operation.addSecurityItem(new SecurityRequirement().addList(BEARER_AUTH));   // 자물쇠
+            }
             if (enabled && !isPublic(handlerMethod)) {
                 operation.addParametersItem(new Parameter()
                         .in("header")
@@ -113,6 +127,7 @@ public class SwaggerConfig {
             codes.addAll(List.of(errors.value()));
             if (errors.auth()) {
                 codes.add(GlobalErrorCode.LOGIN_REQUIRED);
+                codes.add(GlobalErrorCode.INVALID_TOKEN);
                 codes.add(GlobalErrorCode.ACCESS_DENIED);
             }
             Map<Integer, List<GlobalErrorCode>> byStatus = new LinkedHashMap<>();

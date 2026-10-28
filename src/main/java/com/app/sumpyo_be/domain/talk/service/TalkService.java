@@ -4,6 +4,9 @@ import com.app.sumpyo_be.domain.building.entity.Building;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.domain.member.entity.Member;
+import com.app.sumpyo_be.domain.member.entity.MemberZone;
+import com.app.sumpyo_be.domain.member.repository.MemberRepository;
+import com.app.sumpyo_be.domain.member.repository.MemberZoneRepository;
 import com.app.sumpyo_be.domain.member.entity.Role;
 import com.app.sumpyo_be.domain.member.service.MemberAccess;
 import com.app.sumpyo_be.domain.room.entity.Room;
@@ -46,6 +49,8 @@ public class TalkService {
   static final String DELETED_REPLY = "삭제된 답변입니다";
 
   private final MemberAccess memberAccess;
+  private final MemberRepository memberRepository;
+  private final MemberZoneRepository zoneRepository;
   private final TalkAccess talkAccess;
   private final TalkFilterService filterService;
   private final TalkPostRepository postRepository;
@@ -81,6 +86,9 @@ public class TalkService {
     long checking = postRepository.count(scope.and(TalkPostSpecs.hasStatus(TalkStatus.CHECKING)));
     long answered = postRepository.count(scope.and(TalkPostSpecs.hasStatus(TalkStatus.ANSWERED)));
 
+    Map<Long, String> senderNames = memberRepository.findAllById(
+            posts.stream().map(TalkPost::getSenderId).distinct().toList()).stream()
+        .collect(Collectors.toMap(Member::getId, Member::getName));
     return TalkListResponse.builder()
         .building(building.getName())
         .filter(TalkFilterService.toFloors(filter))
@@ -91,6 +99,7 @@ public class TalkService {
             .preview(preview(p.getContent()))
             .status(p.getStatus())
             .sentByMe(p.isSentBy(me.getId()))
+            .senderName(senderNames.get(p.getSenderId()))
             .createdAt(p.getCreatedAt())
             .build()).toList())
         .hasNext(hasNext)
@@ -144,22 +153,25 @@ public class TalkService {
         .sentByMe(sentByMe)
         .createdAt(post.getCreatedAt())
         .suggestions(suggestions)
+        .sender(sender(post.getSenderId()))
         .replies(replies)
         .build();
   }
 
-  /** 내 건물 글이고 보낸 사람 본인이 아니어야 한다. 답변이 달리면 ANSWERED */
+  /**
+   * 내 건물 글이면 누구나 (글쓴이 본인도). 다른 근로생의 답변이 달리면 ANSWERED,
+   * 글쓴이 본인 답변은 상태를 바꾸지 않는다 (UNREAD·CHECKING 유지).
+   */
   @Transactional
   public TalkReplyResponse reply(Long talkId, TalkReplyRequest req) {
     Member me = memberAccess.require(Role.WORKER);
     TalkPost post = findInMyBuilding(talkId, me);
-    if (post.isSentBy(me.getId())) {
-      throw new CustomException(GlobalErrorCode.TALK_SELF_REPLY_DENIED);
-    }
     TalkReply reply = TalkReply.create(post, me, content(req.getContent()),
         Boolean.TRUE.equals(req.getIsSuggested()), LocalDateTime.now(clock));
     replyRepository.save(reply);
-    post.answered();
+    if (!post.isSentBy(me.getId())) {
+      post.answered();
+    }
     return new TalkReplyResponse(reply.getId(), post.getStatus(), reply.getCreatedAt());
   }
 
@@ -177,7 +189,7 @@ public class TalkService {
 
   /**
    * 답변 쓴 사람 본인만 (아니면 403). 이미 삭제했으면 그대로 200.
-   * 남은 답변이 없으면 글 상태 ANSWERED → CHECKING.
+   * 남은 "다른 근로생 답변" 이 없으면 글 상태 ANSWERED → CHECKING (글쓴이 답변만 남아도).
    */
   @Transactional
   public TalkReplyDeleteResponse deleteReply(Long talkId, Long replyId) {
@@ -190,10 +202,23 @@ public class TalkService {
     }
     reply.delete(LocalDateTime.now(clock));
     replyRepository.flush();
-    if (!replyRepository.existsByPostIdAndDeletedAtIsNull(talkId)) {
+    if (!replyRepository.existsByPostIdAndDeletedAtIsNullAndMemberIdNot(talkId, post.getSenderId())) {
       post.noRepliesLeft();
     }
     return new TalkReplyDeleteResponse(replyId, post.getStatus());
+  }
+
+  /** 글쓴이 이름 + 담당 구역 ("북악관 5·6층", 여러 건물이면 첫 건물, 없으면 null) */
+  private TalkDetailResponse.Sender sender(Long senderId) {
+    String name = memberRepository.findById(senderId).map(Member::getName).orElse(null);
+    List<MemberZone> zones = zoneRepository.findWithBuildingByMemberId(senderId);   // 건물 표시 순서 → 층
+    if (zones.isEmpty()) {
+      return new TalkDetailResponse.Sender(name, null);
+    }
+    Long firstBuilding = zones.getFirst().getBuilding().getId();
+    String floors = zones.stream().filter(z -> z.getBuilding().getId().equals(firstBuilding))
+        .map(z -> String.valueOf(z.getFloor())).collect(Collectors.joining("·"));
+    return new TalkDetailResponse.Sender(name, zones.getFirst().getBuilding().getName() + " " + floors + "층");
   }
 
   private TalkPost findInMyBuilding(Long talkId, Member me) {
