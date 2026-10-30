@@ -18,6 +18,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Member {
 
+  /** 미리 알림 시간 기본값 (alert_lead_minutes 가 null 이거나 비로그인) */
+  public static final int DEFAULT_ALERT_LEAD_MINUTES = 15;
+
   @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
@@ -80,7 +83,7 @@ public class Member {
     m.humidityMin = 40;
     m.humidityMax = 60;
     m.alertEnabled = true;
-    m.alertLeadMinutes = 15;
+    m.alertLeadMinutes = DEFAULT_ALERT_LEAD_MINUTES;
     m.notifyVentilation = true;
     m.notifyComplaint = true;
     m.notifySensorError = true;
@@ -113,6 +116,6 @@ public class Member {
 
   /** 기준 초과 몇 분 전에 알릴지. 컬럼이 null 이면 15 */
   public int alertLeadMinutesOrDefault() {
-    return alertLeadMinutes != null ? alertLeadMinutes : 15;
+    return alertLeadMinutes != null ? alertLeadMinutes : DEFAULT_ALERT_LEAD_MINUTES;
   }
 }

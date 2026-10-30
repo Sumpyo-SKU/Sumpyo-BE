@@ -8,6 +8,7 @@ import com.app.sumpyo_be.domain.action.dto.response.ActionListItem;
 import com.app.sumpyo_be.domain.action.dto.response.ActionStartResponse;
 import com.app.sumpyo_be.domain.action.dto.response.ActionStatusResponse;
 import com.app.sumpyo_be.domain.action.dto.request.ActionStepRequest;
+import com.app.sumpyo_be.domain.action.dto.request.VentilateRequest;
 import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.service.ActionService;
@@ -45,7 +46,7 @@ public class ActionController {
       + "홈 '창문 환기 예측' 카드: 지났거나 10분 이내면 timeLabel '지금'·relative null·metricLabel 'CO2', "
       + "아니면 timeLabel HH:mm·relative '30분 뒤'·metricLabel 'CO2 예상'. "
       + "title: CLOSE '창문을 닫아주세요', OPEN 이고 그 시각 전에 수업이 시작하면 '수업 전에 열어두세요', 그 외 '창문 열어주세요'. "
-      + "reason: CO2 'N분 뒤 기준 초과 예정'(지났으면 '기준 초과'), 비 예보 CLOSE '1시간 뒤 비 예상', 민원 '학생 민원 접수'.")
+      + "reason: CO2 'N분 뒤 기준 초과 예정'(지났으면 '기준 초과'), 비 예보 CLOSE '1시간 뒤 비 예상', 민원 '학생 민원 접수', 직접 환기 하기 '직접 환기'.")
   @ApiErrors(value = {GlobalErrorCode.INVALID_ZONE_FILTER}, auth = true, validation = true)
   @Tag(name = ScreenTag.HOME)
   @GetMapping
@@ -92,8 +93,26 @@ public class ActionController {
     return BaseResponse.success(actionService.checkStep(actionId, request));
   }
 
-  @Operation(summary = "조치 완료", description = "예측 조치용. IN_PROGRESS → DONE. 완료 시점 CO2 로 목표 달성 여부를 계산하고, 연결된 민원도 완료 처리합니다.")
+  @Operation(summary = "환기 하기",
+      description = "강의실 상세·캠퍼스 현황 카드의 [환기 하기]. 상태(OVER/PREDICTED/NORMAL)와 상관없이 동작합니다. "
+          + "1) 이 강의실에 이미 환기 중(IN_PROGRESS)인 OPEN 조치가 있으면 새로 만들지 않고 그 조치를 그대로 반환, "
+          + "2) 대기 중(PENDING/CHECKED)인 OPEN 추천 조치가 있으면 그 조치를 시작, "
+          + "3) 둘 다 없으면 source MANUAL 조치를 만들어 바로 IN_PROGRESS. "
+          + "응답 actionId 가 강의실 상세 ventilatingAction.actionId 이고, 끝낼 때 POST /api/actions/{actionId}/complete. "
+          + "환기 중 조치는 CO2 가 800 이하로 떨어지거나(시작할 때 800 초과였던 경우) 시작 후 60분이 지나면 서버가 1분마다 자동 완료합니다.")
+  @ApiErrors(value = {GlobalErrorCode.ROOM_NOT_FOUND}, validation = true)
+  @Tag(name = ScreenTag.CAMPUS)
+  @PostMapping("/ventilate")
+  public BaseResponse<ActionStartResponse> ventilate(@Valid @RequestBody VentilateRequest request) {
+    return BaseResponse.success("환기를 시작했습니다.", actionService.ventilate(request.getRoomId()));
+  }
+
+  @Operation(summary = "조치 완료 / 환기 완료",
+      description = "예측 조치·[환기 하기] 조치용. IN_PROGRESS → DONE. 완료 시점 CO2(최근 10분 최신 값)를 결과 CO2 로 기록하고 "
+          + "목표 달성 여부를 계산하며, 연결된 민원도 완료 처리합니다. 사용자가 완료하면 auto_completed = false, "
+          + "effective = 결과 CO2 < 시작 CO2 (둘 중 하나라도 없으면 null).")
   @ApiErrors({GlobalErrorCode.ACTION_NOT_FOUND, GlobalErrorCode.INVALID_ACTION_STATUS})
+  @Tag(name = ScreenTag.CAMPUS)
   @PostMapping("/{actionId}/complete")
   public BaseResponse<ActionCompleteResponse> complete(@Parameter(description = "조치 ID", example = "88") @PathVariable Long actionId) {
     return BaseResponse.success("조치를 완료했습니다.", actionService.complete(actionId));

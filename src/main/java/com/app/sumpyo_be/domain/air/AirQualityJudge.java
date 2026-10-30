@@ -78,7 +78,7 @@ public final class AirQualityJudge {
       return new StatusResult(RoomStatus.OVER, null);
     }
     return firstExceedAt(predictions, co2Threshold, now)
-        .map(at -> new StatusResult(RoomStatus.PREDICTED, ceilMinutes(Duration.between(now, at))))
+        .map(at -> new StatusResult(RoomStatus.PREDICTED, minutesUntil(now, at)))
         .orElseGet(() -> new StatusResult(RoomStatus.NORMAL, null));
   }
 
@@ -96,8 +96,25 @@ public final class AirQualityJudge {
         .min(Comparator.naturalOrder());
   }
 
-  private static int ceilMinutes(Duration d) {
-    return (int) ((d.getSeconds() + 59) / 60);
+  /**
+   * now 부터 at 까지 남은 분, 반올림 (19분 30초 → 20분, 19분 20초 → 19분).
+   * 강의실 상세 minutesToExceed 와 홈 조치 목록 "N분 뒤"·지금/곧 판정이 같이 쓴다
+   */
+  public static int minutesUntil(LocalDateTime now, LocalDateTime at) {
+    return (int) Math.round(Duration.between(now, at).getSeconds() / 60.0);
+  }
+
+  /** OVER 일 때 기준보다 얼마나 높은지 (현재 CO2 - 기준), 아니면 null */
+  public static Integer overThreshold(RoomStatus status, Integer co2, int co2Threshold) {
+    return status == RoomStatus.OVER ? Integer.valueOf(co2 - co2Threshold) : null;
+  }
+
+  /** PREDICTED 일 때 몇 분 안에 환기해야 하는지 = max(0, 기준 초과까지 남은 분 - 미리 알림 분), 아니면 null */
+  public static Integer ventilateInMinutes(RoomStatus status, Integer minutesToExceed, int alertLeadMinutes) {
+    if (status != RoomStatus.PREDICTED || minutesToExceed == null) {
+      return null;
+    }
+    return Math.max(0, minutesToExceed - alertLeadMinutes);
   }
 
   public static boolean isAlert(RoomStatus status) {

@@ -1,8 +1,10 @@
 package com.app.sumpyo_be.domain.room.service;
 
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
+import com.app.sumpyo_be.domain.action.entity.Recommend;
 import com.app.sumpyo_be.domain.action.repository.ActionRepository;
 import com.app.sumpyo_be.domain.air.AirQualityJudge;
+import com.app.sumpyo_be.domain.air.RoomStatus;
 import com.app.sumpyo_be.domain.air.Thresholds;
 import com.app.sumpyo_be.global.exception.CustomException;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
@@ -18,6 +20,7 @@ import com.app.sumpyo_be.domain.room.dto.response.RoomResponse;
 import com.app.sumpyo_be.domain.room.dto.response.RoomResponse.CurrentClass;
 import com.app.sumpyo_be.domain.room.dto.response.RoomResponse.NextClass;
 import com.app.sumpyo_be.domain.room.dto.response.RoomResponse.PendingAction;
+import com.app.sumpyo_be.domain.room.dto.response.RoomResponse.VentilatingAction;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import com.app.sumpyo_be.domain.room.repository.RoomRepository;
 import com.app.sumpyo_be.domain.schedule.entity.ClassSchedule;
@@ -75,22 +78,42 @@ public class RoomService {
     ClassSchedule cur = cn.current();
     ClassSchedule next = cn.next();
 
-    return new RoomResponse(
-        room.getId(), room.getBuilding().getName(), room.getNumber(), room.getFloor(),
-        room.getSensorLevel().isSimulated(),
-        c.co2(), c.temp(), c.humidity(),
-        score,
-        AirQualityJudge.comfortLevel(score),
-        AirQualityJudge.co2Level(c.co2(), t.co2()),
-        AirQualityJudge.co2OverBy(c.co2(), t.co2()),
-        AirQualityJudge.tempLabel(c.temp(), t.tempMin(), t.tempMax()),
-        AirQualityJudge.humidityLabel(c.humidity(), t.humidityMin(), t.humidityMax()),
-        ventilating,
-        pendingAction,
-        cur == null ? null : new CurrentClass(cur.getCourseName(), hhmm(cur.getStartTime()),
-            hhmm(cur.getEndTime())),
-        next == null ? null : new NextClass(next.getCourseName(), hhmm(next.getStartTime()),
-            hhmm(next.getEndTime()), AirQualityJudge.nextClassTip(c.status())));
+    // 환기 상태 (OVER/PREDICTED/NORMAL/NO_SENSOR) 와 진행 중인 환기
+    Integer minutesToExceed = c.status() == RoomStatus.PREDICTED ? c.minutesToExceed() : null;
+    VentilatingAction ventilatingAction = actionRepository
+        .findTopByRoomIdAndRecommendAndStatusInOrderByCreatedAtDescIdDesc(roomId, Recommend.OPEN,
+            List.of(ActionStatus.IN_PROGRESS))
+        .map(a -> new VentilatingAction(a.getId(), a.getStartedAt()))
+        .orElse(null);
+
+    return RoomResponse.builder()
+        .roomId(room.getId())
+        .building(room.getBuilding().getName())
+        .number(room.getNumber())
+        .floor(room.getFloor())
+        .simulated(room.getSensorLevel().isSimulated())
+        .co2(c.co2())
+        .temp(c.temp())
+        .humidity(c.humidity())
+        .comfortScore(score)
+        .comfortLevel(AirQualityJudge.comfortLevel(score))
+        .co2Level(AirQualityJudge.co2Level(c.co2(), t.co2()))
+        .co2OverBy(AirQualityJudge.co2OverBy(c.co2(), t.co2()))
+        .tempLabel(AirQualityJudge.tempLabel(c.temp(), t.tempMin(), t.tempMax()))
+        .humidityLabel(AirQualityJudge.humidityLabel(c.humidity(), t.humidityMin(), t.humidityMax()))
+        .ventilating(ventilating)
+        .co2Status(c.status())
+        .overThreshold(AirQualityJudge.overThreshold(c.status(), c.co2(), t.co2()))
+        .minutesToExceed(minutesToExceed)
+        .ventilateInMinutes(AirQualityJudge.ventilateInMinutes(c.status(), minutesToExceed,
+            thresholdService.currentAlertLeadMinutes()))
+        .ventilatingAction(ventilatingAction)
+        .pendingAction(pendingAction)
+        .currentClass(cur == null ? null : new CurrentClass(cur.getCourseName(), hhmm(cur.getStartTime()),
+            hhmm(cur.getEndTime())))
+        .nextClass(next == null ? null : new NextClass(next.getCourseName(), hhmm(next.getStartTime()),
+            hhmm(next.getEndTime()), AirQualityJudge.nextClassTip(c.status())))
+        .build();
   }
 
   /** 마지막 측정값. 10분 넘게 지났으면 sensorOnline=false (값은 그대로 내려줌) */

@@ -1,6 +1,7 @@
 package com.app.sumpyo_be.domain.member.service;
 
 import com.app.sumpyo_be.domain.air.Thresholds;
+import com.app.sumpyo_be.domain.member.entity.Member;
 import com.app.sumpyo_be.domain.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,5 +21,13 @@ public class ThresholdService {
         .flatMap(memberRepository::findById)
         .map(Thresholds::from)
         .orElse(Thresholds.DEFAULT);
+  }
+
+  /** 로그인 사용자의 미리 알림 시간(기준 초과 몇 분 전, 10·15·20), 비로그인이면 15 */
+  public int currentAlertLeadMinutes() {
+    return currentMemberProvider.currentMemberId()
+        .flatMap(memberRepository::findById)
+        .map(Member::alertLeadMinutesOrDefault)
+        .orElse(Member.DEFAULT_ALERT_LEAD_MINUTES);
   }
 }

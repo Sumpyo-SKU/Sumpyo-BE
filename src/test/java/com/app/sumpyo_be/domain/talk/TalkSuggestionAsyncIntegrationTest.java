@@ -43,7 +43,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
     "sumpyo.simulator.enabled=false",
     "sumpyo.notification.scan-enabled=false",
     // 로컬 .env 에 공공데이터 키가 있어도 외부 API 를 부르지 않도록
-    "sumpyo.outdoor.collect-enabled=false", "sumpyo.action.rain-close-enabled=false", "sumpyo.outdoor.api-key=",
+    "sumpyo.outdoor.collect-enabled=false", "sumpyo.action.rain-close-enabled=false", "sumpyo.action.auto-complete-enabled=false", "sumpyo.outdoor.api-key=",
     "sumpyo.demo.password=test-demo-password",
     "sumpyo.demo.header-login=true",
     "sumpyo.llm.provider=", "sumpyo.llm.api-key=", "sumpyo.llm.model=",   // 진짜 LlmClient 대신 mock

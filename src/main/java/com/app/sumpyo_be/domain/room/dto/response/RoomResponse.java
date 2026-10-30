@@ -3,7 +3,9 @@ package com.app.sumpyo_be.domain.room.dto.response;
 import com.app.sumpyo_be.domain.air.AirQualityJudge;
 import com.app.sumpyo_be.domain.air.ComfortLevel;
 import com.app.sumpyo_be.domain.air.Co2Level;
+import com.app.sumpyo_be.domain.air.RoomStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -63,6 +65,27 @@ public class RoomResponse {
   @Schema(description = "환기 진행 중 여부 (IN_PROGRESS 조치가 있으면 true)", example = "false")
   private boolean ventilating;
 
+  @Schema(description = "환기 상태. 평면도 칸 status 와 같은 판정 (로그인 사용자 CO2 기준, 비로그인 1000). "
+      + "OVER: 현재 CO2 ≥ 기준 (Figma CRITICAL), "
+      + "PREDICTED: 현재는 기준 미만이지만 30분 안에 기준 이상 예측 (Figma WARNING), "
+      + "NORMAL: 둘 다 아님, NO_SENSOR: CO2 센서 없음 또는 10분 넘게 측정 없음", example = "PREDICTED")
+  private RoomStatus co2Status;
+
+  @Schema(description = "OVER 일 때 현재 CO2 - 기준 (ppm). 아니면 null", example = "null")
+  private Integer overThreshold;
+
+  @Schema(description = "PREDICTED 일 때 예측 CO2 가 처음으로 기준 이상이 되는 시각까지 남은 분 (반올림). 아니면 null",
+      example = "20")
+  private Integer minutesToExceed;
+
+  @Schema(description = "PREDICTED 일 때 몇 분 안에 환기하면 되는지 = max(0, minutesToExceed - 미리 알림 시간). "
+      + "미리 알림 시간은 로그인 사용자 설정(10·15·20), 비로그인 15. 아니면 null", example = "10")
+  private Integer ventilateInMinutes;
+
+  @Schema(description = "진행 중인 환기 (이 강의실의 IN_PROGRESS 인 OPEN 조치 중 최신). 없으면 null. "
+      + "[환기 완료] = POST /api/actions/{actionId}/complete")
+  private VentilatingAction ventilatingAction;
+
   @Schema(description = "대기 중인 조치 (PENDING/CHECKED 중 최신). 없으면 null")
   private PendingAction pendingAction;
 
@@ -83,6 +106,19 @@ public class RoomResponse {
 
     @Schema(description = "안내 문구", example = "약 20분 뒤 기준 초과 예상")
     private String message;
+  }
+
+  @Getter
+  @NoArgsConstructor
+  @AllArgsConstructor
+  @Schema(name = "RoomVentilatingAction", description = "진행 중인 환기")
+  public static class VentilatingAction {
+
+    @Schema(description = "조치 ID ([환기 완료] 에 사용)", example = "92")
+    private Long actionId;
+
+    @Schema(description = "환기 시작 시각 (KST)", example = "2026-10-21T13:50:00")
+    private LocalDateTime startedAt;
   }
 
   // 인원(room.capacity, class_schedule.enrolled)은 화면에서 빠져 내려주지 않는다. 컬럼은 남겨둠.

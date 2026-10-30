@@ -118,6 +118,33 @@ public class Action {
   @Column(name = "forecast_co2")
   private Integer forecastCo2;
 
+  /** 환기 시작 시각 (IN_PROGRESS 가 된 시각). 자동 완료 60분 기준 */
+  @Column(name = "started_at")
+  private LocalDateTime startedAt;
+
+  /** 서버가 자동 완료했으면 true (ActionAutoCompleteService), 사용자가 [완료] 하면 false */
+  @Column(name = "auto_completed", nullable = false)
+  private boolean autoCompleted;
+
+  /** 환기 효과 (actual_co2_after < co2_before). 둘 중 하나라도 없으면 null */
+  private Boolean effective;
+
+  /** 요약 문구 (직접 환기 하기) */
+  public static final String MANUAL_SUMMARY = "직접 환기";
+
+  /** 추천 조치 없이 [환기 하기] 를 누른 조치 (PENDING, 바로 start 한다) */
+  public static Action manualVentilation(Room room, LocalDateTime now) {
+    Action a = new Action();
+    a.room = room;
+    a.source = ActionSource.MANUAL;
+    a.recommend = Recommend.OPEN;
+    a.metric = Metric.CO2;
+    a.summary = MANUAL_SUMMARY;
+    a.status = ActionStatus.PENDING;
+    a.createdAt = now;
+    return a;
+  }
+
   /** 요약 문구 (비 예보 창문 닫기) */
   public static final String RAIN_CLOSE_SUMMARY = "비 예상 · 창문 닫기";
 
@@ -256,6 +283,7 @@ public class Action {
       throw new IllegalStateException("시작할 수 없는 상태: " + status);
     }
     this.status = ActionStatus.IN_PROGRESS;
+    this.startedAt = now;
     if (hasPlan()) {
       if (co2Before != null) {
         this.co2Before = co2Before;
@@ -267,13 +295,24 @@ public class Action {
     this.memberId = memberId;
   }
 
-  /** [완료] IN_PROGRESS → DONE */
+  /** [완료] 사용자가 직접 IN_PROGRESS → DONE */
   public void complete(Integer actualCo2After, LocalDateTime now) {
+    finish(actualCo2After, now, false);
+  }
+
+  /** [자동 완료] CO2 가 800 이하로 떨어졌거나 시작 후 60분이 지나 서버가 IN_PROGRESS → DONE */
+  public void autoComplete(Integer actualCo2After, LocalDateTime now) {
+    finish(actualCo2After, now, true);
+  }
+
+  private void finish(Integer actualCo2After, LocalDateTime now, boolean auto) {
     requireStatus(ActionStatus.IN_PROGRESS);
     this.status = ActionStatus.DONE;
     this.actualCo2After = actualCo2After;
     this.windowClosedAt = now;
     this.completedAt = now;
+    this.autoCompleted = auto;
+    this.effective = co2Before == null || actualCo2After == null ? null : actualCo2After < co2Before;
   }
 
   private void requireStatus(ActionStatus expected) {

@@ -5,9 +5,9 @@ import com.app.sumpyo_be.domain.action.entity.ActionSource;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.entity.Metric;
 import com.app.sumpyo_be.domain.action.entity.Recommend;
+import com.app.sumpyo_be.domain.air.AirQualityJudge;
 import com.app.sumpyo_be.domain.air.Thresholds;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import lombok.AllArgsConstructor;
@@ -44,13 +44,13 @@ public class ActionListItem {
   @Schema(description = "호수 ('호' 없이)", example = "618")
   private String number;
 
-  @Schema(description = "조치 발생 원인 (PREDICTION: 예측, COMPLAINT: 민원)", example = "PREDICTION")
+  @Schema(description = "조치 발생 원인 (PREDICTION: 예측, COMPLAINT: 민원, MANUAL: 추천 없이 직접 환기 하기)", example = "PREDICTION")
   private ActionSource source;
 
   @Schema(description = "추천 조치 (OPEN: 창문 열기, CLOSE: 창문 닫기)", example = "OPEN")
   private Recommend recommend;
 
-  @Schema(description = "긴급도 (NOW: 지났거나 10분 이내, SOON: 30분 이내, LATER: 그 외)", example = "NOW")
+  @Schema(description = "긴급도 (NOW: 지났거나 10분 이내, SOON: 30분 이내, LATER: 그 외). 남은 분은 반올림 (10분 29초 → 10분)", example = "NOW")
   private ActionTiming timing;
 
   @Schema(description = "시각 표시. 지났거나 10분 이내면 '지금', 아니면 expectedAt 의 HH:mm", example = "14:30")
@@ -62,7 +62,7 @@ public class ActionListItem {
   @Schema(description = "카드 제목 (창문 열어주세요 / 수업 전에 열어두세요 / 창문을 닫아주세요)", example = "수업 전에 열어두세요")
   private String title;
 
-  @Schema(description = "조치 이유 (N분 뒤 기준 초과 예정 / 기준 초과 / 1시간 뒤 비 예상 / 학생 민원 접수)",
+  @Schema(description = "조치 이유 (N분 뒤 기준 초과 예정 / 기준 초과 / 1시간 뒤 비 예상 / 학생 민원 접수 / 직접 환기)",
       example = "30분 뒤 기준 초과 예정")
   private String reason;
 
@@ -158,6 +158,9 @@ public class ActionListItem {
     if (a.getSource() == ActionSource.COMPLAINT) {
       return "학생 민원 접수";
     }
+    if (a.getSource() == ActionSource.MANUAL) {
+      return Action.MANUAL_SUMMARY;
+    }
     if (a.isRainClose()) {
       return at.isAfter(now) ? relative(minutesUntil(at, now)) + " 비 예상" : "곧 비 예상";
     }
@@ -201,9 +204,8 @@ public class ActionListItem {
     };
   }
 
-  /** 남은 분, 올림 (9분 30초 → 10분). 캠퍼스 현황의 minutesToExceed 와 같은 방식 */
+  /** 남은 분, 반올림. 강의실 상세 minutesToExceed 와 같은 계산 (AirQualityJudge.minutesUntil) */
   private static long minutesUntil(LocalDateTime at, LocalDateTime now) {
-    long seconds = Duration.between(now, at).toSeconds();
-    return Math.ceilDiv(seconds, 60);
+    return AirQualityJudge.minutesUntil(now, at);
   }
 }

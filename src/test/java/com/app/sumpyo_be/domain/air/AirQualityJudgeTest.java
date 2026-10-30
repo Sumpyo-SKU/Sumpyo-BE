@@ -67,9 +67,11 @@ class AirQualityJudgeTest {
     }
 
     @Test
-    void 남은_시간은_분_단위로_올림() {
-      List<PredictionPoint> preds = List.of(new PredictionPoint(1L, NOW.plusSeconds(19 * 60 + 30), 1200));
-      assertThat(status(SensorLevel.FULL, 900, preds).minutesToExceed()).isEqualTo(20);
+    void 남은_시간은_분_단위로_반올림() {
+      List<PredictionPoint> half = List.of(new PredictionPoint(1L, NOW.plusSeconds(19 * 60 + 30), 1200));
+      assertThat(status(SensorLevel.FULL, 900, half).minutesToExceed()).isEqualTo(20);
+      List<PredictionPoint> under = List.of(new PredictionPoint(1L, NOW.plusSeconds(19 * 60 + 20), 1200));
+      assertThat(status(SensorLevel.FULL, 900, under).minutesToExceed()).isEqualTo(19);
     }
 
     @Test
@@ -110,6 +112,39 @@ class AirQualityJudgeTest {
       assertThat(AirQualityJudge.isAlert(RoomStatus.PREDICTED)).isTrue();
       assertThat(AirQualityJudge.isAlert(RoomStatus.NORMAL)).isFalse();
       assertThat(AirQualityJudge.isAlert(RoomStatus.NO_SENSOR)).isFalse();
+    }
+  }
+
+  @Nested
+  class VentilationStatus {
+
+    @Test
+    void OVER_면_현재_CO2_빼기_기준() {
+      assertThat(AirQualityJudge.overThreshold(RoomStatus.OVER, 1150, THRESHOLD)).isEqualTo(150);
+      assertThat(AirQualityJudge.overThreshold(RoomStatus.OVER, 1000, THRESHOLD)).isZero();
+    }
+
+    @Test
+    void OVER_가_아니면_overThreshold_는_null() {
+      assertThat(AirQualityJudge.overThreshold(RoomStatus.PREDICTED, 920, THRESHOLD)).isNull();
+      assertThat(AirQualityJudge.overThreshold(RoomStatus.NORMAL, 650, THRESHOLD)).isNull();
+      assertThat(AirQualityJudge.overThreshold(RoomStatus.NO_SENSOR, null, THRESHOLD)).isNull();
+    }
+
+    @Test
+    void 미리_알림_10분_초과까지_20분이면_10분_안에_환기() {
+      assertThat(AirQualityJudge.ventilateInMinutes(RoomStatus.PREDICTED, 20, 10)).isEqualTo(10);
+    }
+
+    @Test
+    void 미리_알림_시간보다_적게_남았으면_0() {
+      assertThat(AirQualityJudge.ventilateInMinutes(RoomStatus.PREDICTED, 8, 15)).isZero();
+    }
+
+    @Test
+    void PREDICTED_가_아니면_ventilateInMinutes_는_null() {
+      assertThat(AirQualityJudge.ventilateInMinutes(RoomStatus.OVER, null, 10)).isNull();
+      assertThat(AirQualityJudge.ventilateInMinutes(RoomStatus.NORMAL, null, 10)).isNull();
     }
   }
 

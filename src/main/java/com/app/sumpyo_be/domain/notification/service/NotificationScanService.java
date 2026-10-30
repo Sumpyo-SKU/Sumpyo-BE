@@ -108,7 +108,8 @@ public class NotificationScanService {
       if (action.getPredictedValue() == null || (action.getMetric() != null && action.getMetric() != Metric.CO2)) {
         continue;
       }
-      int minutes = minutesUntil(now, action.getExpectedAt());
+      // 홈 조치 목록·강의실 상세와 같은 반올림. 30초 이내로 남아 0분이 되면 "0분 뒤" 대신 1분으로
+      int minutes = Math.max(1, AirQualityJudge.minutesUntil(now, action.getExpectedAt()));
       NotificationDraft draft = NotificationDraft.ventilationSoon(action, minutes);
       for (Member m : recipients.of(action.getRoom())) {
         if (m.isNotifyVentilation() && m.isAlertOn() && minutes <= m.alertLeadMinutesOrDefault()) {
@@ -141,11 +142,6 @@ public class NotificationScanService {
       }
     }
     return created;
-  }
-
-  /** 남은 분, 올림 (14분 10초 → 15분) */
-  static int minutesUntil(LocalDateTime now, LocalDateTime at) {
-    return (int) Math.ceilDiv(Duration.between(now, at).toSeconds(), 60);
   }
 
   private int publish(Member m, NotificationDraft draft, LocalDateTime now) {

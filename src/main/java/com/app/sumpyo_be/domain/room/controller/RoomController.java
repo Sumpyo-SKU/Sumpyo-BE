@@ -13,6 +13,9 @@ import com.app.sumpyo_be.domain.room.service.RoomForecastService;
 import com.app.sumpyo_be.domain.room.service.RoomService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -35,7 +38,24 @@ public class RoomController {
   private final RoomService roomService;
   private final RoomForecastService roomForecastService;
 
-  @Operation(summary = "강의실 상세", description = "평면도 바텀시트·강의실 상세 공용. 현재 CO2·온습도, 쾌적도, 대기 조치, 현재/다음 수업을 반환합니다.")
+  @Operation(summary = "강의실 상세", description = "평면도 바텀시트(캠퍼스 현황 선택 강의실 카드)·강의실 상세 공용. "
+      + "현재 CO2·온습도, 쾌적도, 환기 상태, 진행 중인 환기, 대기 조치, 현재/다음 수업을 반환합니다. "
+      + "환기 상태 co2Status: OVER(현재 CO2 ≥ 기준) → overThreshold, "
+      + "PREDICTED(30분 안에 기준 이상 예측) → minutesToExceed·ventilateInMinutes(= max(0, minutesToExceed - 미리 알림 시간)), "
+      + "NORMAL·NO_SENSOR 는 셋 다 null. 진행 중인 환기가 있으면 ventilatingAction 으로 [환기 완료]"
+      + "(POST /api/actions/{actionId}/complete), 없으면 [환기 하기](POST /api/actions/ventilate).")
+  @ApiResponse(responseCode = "200", description = "성공 (예시: 기준 CO2 1000, 미리 알림 10분)",
+      content = @Content(mediaType = "application/json", examples = {
+          @ExampleObject(name = "OVER (CRITICAL)", summary = "기준 초과, 환기 전", value = RoomApiExamples.OVER),
+          @ExampleObject(name = "OVER (CRITICAL) · 환기 중", summary = "기준 초과, 환기 중",
+              value = RoomApiExamples.OVER_VENTILATING),
+          @ExampleObject(name = "PREDICTED (WARNING)", summary = "20분 뒤 초과 예상, 10분 안에 환기",
+              value = RoomApiExamples.PREDICTED),
+          @ExampleObject(name = "PREDICTED (WARNING) · 환기 중", summary = "초과 예상, 환기 중",
+              value = RoomApiExamples.PREDICTED_VENTILATING),
+          @ExampleObject(name = "NORMAL", summary = "정상", value = RoomApiExamples.NORMAL),
+          @ExampleObject(name = "NORMAL · 환기 중", summary = "정상 상태에서 [환기 하기]",
+              value = RoomApiExamples.NORMAL_VENTILATING)}))
   @ApiErrors({GlobalErrorCode.ROOM_NOT_FOUND})
   @Tag(name = ScreenTag.CAMPUS)
   @GetMapping

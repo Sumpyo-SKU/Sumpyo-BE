@@ -53,6 +53,19 @@ public interface ActionRepository extends JpaRepository<Action, Long> {
 
   boolean existsByRoomIdAndRecommendAndStatus(Long roomId, Recommend recommend, ActionStatus status);
 
+  /** 이 방의 가장 최근 OPEN 조치 (IN_PROGRESS → 환기 중, WAITING → [환기 하기] 에 쓸 추천 조치) */
+  Optional<Action> findTopByRoomIdAndRecommendAndStatusInOrderByCreatedAtDescIdDesc(Long roomId, Recommend recommend,
+      Collection<ActionStatus> statuses);
+
+  /** 자동 완료 대상: 환기 중(IN_PROGRESS)인 OPEN 조치. 체크리스트 조치(민원 추천)는 단계 완료로 끝나므로 뺀다 */
+  @Query("""
+      select a from Action a join fetch a.room
+      where a.status = com.app.sumpyo_be.domain.action.entity.ActionStatus.IN_PROGRESS
+        and a.recommend = com.app.sumpyo_be.domain.action.entity.Recommend.OPEN
+        and a.plan is null
+      """)
+  List<Action> findAutoCompleteCandidates();
+
   /** 민원에 연결된 가장 최근 조치 */
   Optional<Action> findTopByComplaintIdOrderByCreatedAtDescIdDesc(Long complaintId);
 
