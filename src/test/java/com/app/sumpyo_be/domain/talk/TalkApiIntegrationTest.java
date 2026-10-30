@@ -379,7 +379,7 @@ class TalkApiIntegrationTest {
           .andExpect(jsonPath("$.data.status").value("ANSWERED"))
           .andExpect(jsonPath("$.data.replies", hasSize(1)))
           .andExpect(jsonPath("$.data.replies[0].content").value("617호 지금 수업 중이에요"))
-          .andExpect(jsonPath("$.data.replies[0].author").value("이근로"))
+          .andExpect(jsonPath("$.data.replies[0].author").value("이근로 · 6층"))
           .andExpect(jsonPath("$.data.replies[0].isSuggested").value(true));
       // 답변 후 다시 열어도 CHECKING 으로 돌아가지 않는다
       as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.status").value("ANSWERED"));
@@ -395,7 +395,7 @@ class TalkApiIntegrationTest {
       as(W1, post("/api/talks/{id}/replies", talkId), "{\"content\":\"한 번 더\"}")
           .andExpect(jsonPath("$.data.talkStatus").value("CHECKING"));
       as(W1, get("/api/talks/{id}", talkId))
-          .andExpect(jsonPath("$.data.replies[*].author", contains("김근로", "김근로")))
+          .andExpect(jsonPath("$.data.replies[*].author", contains("김근로 · 5층", "김근로 · 5층")))
           .andExpect(jsonPath("$.data.replies[0].mine").value(true))
           .andExpect(jsonPath("$.data.suggestions", empty()));   // 글쓴이에겐 추천 없음
     }
@@ -540,6 +540,22 @@ class TalkApiIntegrationTest {
 
   @Nested
   class Sender {
+
+    @Test
+    void 답변_작성자는_이름_담당_층_여러_층이면_가운뎃점_그_건물_구역이_없으면_이름만() throws Exception {
+      long talkId = send(W1, 6, null, "6층 확인 부탁");
+      as(W1, post("/api/talks/{id}/replies", talkId), "{\"content\":\"제가 볼게요\"}").andExpect(status().isOk());
+      as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.replies[0].author").value("김근로 · 5층"));
+
+      // 여러 층 + 다른 건물 → 그 글 건물(북악관)의 층만
+      as(W1, put("/api/me/zones"), "[{\"buildingId\":" + bukak + ",\"floors\":[6,5]},{\"buildingId\":" + hyein
+          + ",\"floors\":[3]}]").andExpect(status().isOk());
+      as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.replies[0].author").value("김근로 · 5·6층"));
+
+      // 그 건물 담당 구역이 없으면 이름만 (답변 뒤 구역을 지운 경우)
+      jdbc.update("delete from member_zone where member_id = (select id from member where login_id = 'worker01')");
+      as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.replies[0].author").value("김근로"));
+    }
 
     @Test
     void 상세_글쓴이_이름과_담당_구역_단일_층_여러_층_구역_없음() throws Exception {

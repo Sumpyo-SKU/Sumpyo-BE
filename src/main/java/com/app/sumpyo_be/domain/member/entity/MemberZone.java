@@ -50,6 +50,16 @@ public class MemberZone {
     return first.getName() + " · " + floors + "층";
   }
 
+  /**
+   * 한 건물 안의 담당 층 표시: "6층", 여러 층이면 "5·6층" (캠퍼스톡 답변 작성자 "김근로 · 6층").
+   * @param zones 한 회원의 구역, 층 순. 그 건물 구역이 없으면 null
+   */
+  public static String floorLabel(List<MemberZone> zones, Long buildingId) {
+    List<String> floors = zones.stream().filter(z -> z.getBuilding().getId().equals(buildingId))
+        .map(z -> String.valueOf(z.getFloor())).toList();
+    return floors.isEmpty() ? null : String.join("·", floors) + "층";
+  }
+
   public static MemberZone of(Long memberId, Building building, int floor) {
     MemberZone z = new MemberZone();
     z.memberId = memberId;

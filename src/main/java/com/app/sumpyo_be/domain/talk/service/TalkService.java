@@ -140,9 +140,15 @@ public class TalkService {
     List<String> suggestions = sentByMe ? List.of() : suggestionService.forDetail(post);
 
     // 삭제한 답변은 자리를 남겨 대화 순서를 유지한다
-    List<TalkDetailResponse.Reply> replies = replyRepository.findWithMemberByPostId(talkId).stream()
+    List<TalkReply> replyRows = replyRepository.findWithMemberByPostId(talkId);
+    Long buildingId = post.getBuilding().getId();
+    Map<Long, List<MemberZone>> zones = replyRows.isEmpty() ? Map.of()
+        : zoneRepository.findByMemberIdIn(replyRows.stream().map(r -> r.getMember().getId()).distinct().toList())
+            .stream().collect(Collectors.groupingBy(MemberZone::getMemberId));
+    List<TalkDetailResponse.Reply> replies = replyRows.stream()
         .map(r -> new TalkDetailResponse.Reply(r.getId(), r.isDeleted() ? DELETED_REPLY : r.getContent(),
-            r.getMember().getName(), r.isSuggested(), r.isWrittenBy(me.getId()), r.isDeleted(), r.getCreatedAt()))
+            author(r.getMember(), zones.getOrDefault(r.getMember().getId(), List.of()), buildingId),
+            r.isSuggested(), r.isWrittenBy(me.getId()), r.isDeleted(), r.getCreatedAt()))
         .toList();
     return TalkDetailResponse.builder()
         .talkId(post.getId())
@@ -206,6 +212,12 @@ public class TalkService {
       post.noRepliesLeft();
     }
     return new TalkReplyDeleteResponse(replyId, post.getStatus());
+  }
+
+  /** 답변 작성자 "김근로 · 6층" (그 글 건물의 담당 층, 여러 층이면 "5·6층"). 그 건물 담당 구역이 없으면 이름만 */
+  static String author(Member member, List<MemberZone> zones, Long buildingId) {
+    String floors = MemberZone.floorLabel(zones, buildingId);
+    return floors == null ? member.getName() : member.getName() + " · " + floors;
   }
 
   /** 글쓴이 이름 + 근로 구역 ("북악관 · 6층", 여러 층이면 "북악관 · 5·6층", 여러 건물이면 첫 건물, 없으면 null) */

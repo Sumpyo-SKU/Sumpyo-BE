@@ -75,7 +75,8 @@ public class TalkDetailResponse {
     @Schema(description = "내용", example = "617호 지금 수업 중이에요")
     private String content;
 
-    @Schema(description = "답한 근로생 이름", example = "김근로")
+    @Schema(description = "답한 근로생 '이름 · 담당 층' (그 글 건물 기준, 여러 층이면 '김근로 · 5·6층'). "
+        + "그 건물 담당 구역이 없으면 이름만", example = "김근로 · 6층")
     private String author;
 
     // boolean 으로 두면 Lombok getter 가 isIsSuggested/isSuggested 가 돼 JSON 이름이 "suggested" 로 바뀐다

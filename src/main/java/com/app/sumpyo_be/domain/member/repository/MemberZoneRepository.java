@@ -1,6 +1,7 @@
 package com.app.sumpyo_be.domain.member.repository;
 
 import com.app.sumpyo_be.domain.member.entity.MemberZone;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -15,6 +16,10 @@ public interface MemberZoneRepository extends JpaRepository<MemberZone, Long> {
       order by b.displayOrder, z.floor
       """)
   List<MemberZone> findWithBuildingByMemberId(@Param("memberId") Long memberId);
+
+  /** 여러 회원의 담당 구역 (캠퍼스톡 답변 작성자 층 표시). 층 순 */
+  @Query("select z from MemberZone z where z.memberId in :memberIds order by z.floor")
+  List<MemberZone> findByMemberIdIn(@Param("memberIds") Collection<Long> memberIds);
 
   /**
    * 통째 교체용 일괄 삭제. 바로 DB 에 실행된다.
