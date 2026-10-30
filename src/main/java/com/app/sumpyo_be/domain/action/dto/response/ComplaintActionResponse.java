@@ -46,18 +46,23 @@ public class ComplaintActionResponse {
       example = "779", nullable = true)
   private Integer expectedCo2After;
 
-  @Schema(description = "예상 효과 지표. 창문 단계가 있으면 CO2 (co2Before → expectedCo2After), "
-      + "없고 에어컨 단계가 있으면 TEMP (현재 온도 → 희망 온도). 계산할 수 없으면 null 이고 effectBefore·effectAfter 도 null",
-      example = "CO2", nullable = true)
+  @Schema(description = "효과 지표 (추천·처리 중 '예상 효과', 완료 'CO₂ 변화' 카드). 창문 단계가 있으면 CO2, "
+      + "없고 에어컨 단계가 있으면 TEMP. 값이 없으면 다음 규칙, 계산할 수 없으면 null 이고 effectBefore·effectAfter·effectUnit 도 null "
+      + "(0 은 내려주지 않으니 null 을 0 으로 그리지 말 것)", example = "CO2", nullable = true)
   private Metric effectMetric;
 
-  @Schema(description = "예상 효과 조치 전 값. CO2 면 co2Before (ppm), TEMP 면 현재 온도 (°C, 최근 10분 측정, 없으면 민원 접수 때 값). "
-      + "effectMetric 이 null 이면 null", example = "1250", nullable = true)
+  @Schema(description = "조치 전 값. CO2 면 co2Before (ppm). TEMP 면 추천·처리 중엔 현재 온도 "
+      + "(최근 10분 측정, 없으면 민원 접수 때 값), 완료면 처리 시작 때 온도 (시작 전 10분 안 측정). effectMetric 이 null 이면 null",
+      example = "1250", nullable = true)
   private Integer effectBefore;
 
-  @Schema(description = "예상 효과 조치 후 값. CO2 면 expectedCo2After (ppm), TEMP 면 에어컨 희망 온도 (°C). "
-      + "effectMetric 이 null 이면 null", example = "779", nullable = true)
+  @Schema(description = "조치 후 값. CO2 면 추천·처리 중엔 expectedCo2After, 완료면 결과 CO2 (actualCo2After, 측정 전이면 효과 전부 null). "
+      + "TEMP 면 추천·처리 중엔 에어컨 희망 온도, 완료면 완료 때 온도 (결과 측정 시각, 없으면 완료 시각 전 10분 안 측정). "
+      + "effectMetric 이 null 이면 null", example = "757", nullable = true)
   private Integer effectAfter;
+
+  @Schema(description = "효과 단위 (CO2 'ppm', TEMP '°C'). effectMetric 이 null 이면 null", example = "ppm", nullable = true)
+  private String effectUnit;
 
   @Schema(description = "그대로 두면 예상 CO2 (ppm, predict.py 예측: 수업 종료 시각, 수업이 없으면 30분 뒤). 예측이 없으면 null. "
       + "화면 '그대로 두면 1,280ppm'", example = "1280")

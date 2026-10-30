@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
  * - 추워요: 열린 창문이 있으면 창문 닫기, 아니면 쉬는 시간에만 짧게 환기 안내
  * - 습해요: 바깥 습도가 10%p 이상 낮고 창문을 열 수 있으면 창문, 아니면 에어컨(제습)
  * - 설비 고장: 단계 없이 시설팀 신고 안내
+ * 지금 CO2 가 기준 이상이면 창문 열기가 들어간 대안만 (planWithWindow)
  */
 @Component
 public class RulePlanner {
@@ -23,8 +24,30 @@ public class RulePlanner {
   static final int COOLER_OUTSIDE = 3;
   static final int DRIER_OUTSIDE = 10;
 
+  /** CO2 가 기준 이상일 때 대안에 창문 열기가 없으면 쓰는 이유 */
+  static final String CO2_OVER_REASON = "CO2 가 기준을 넘어서 창문 환기가 먼저예요";
+
   public RawPlan plan(PlanContext ctx) {
-    List<RawPlan> options = options(ctx);
+    return pick(options(ctx), ctx);
+  }
+
+  /**
+   * CO2 가 기준 이상일 때: 창문 열기가 들어간 대안만. 민원 분류의 대안에 없으면(추워요·설비 고장 등) 창문 2곳,
+   * 다른 방법용으로 창문 4곳도 둔다 (실내가 적정보다 더우면 에어컨 추가)
+   */
+  public RawPlan planWithWindow(PlanContext ctx) {
+    List<RawPlan> options = new ArrayList<>(options(ctx).stream()
+        .filter(p -> PlanCalculator.windowOpen(p.steps()).isPresent()).toList());
+    if (options.isEmpty()) {
+      options.add(new RawPlan(withAcIfHot(ctx, window(2)), null, CO2_OVER_REASON));
+    }
+    if (options.size() < 2) {
+      options.add(new RawPlan(withAcIfHot(ctx, window(4)), null, "창문을 더 많이 열면 더 빨리 환기돼요"));
+    }
+    return pick(options, ctx);
+  }
+
+  private static RawPlan pick(List<RawPlan> options, PlanContext ctx) {
     if (!ctx.isRetry()) {
       return options.getFirst();
     }

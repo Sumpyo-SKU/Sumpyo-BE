@@ -2,6 +2,7 @@ package com.app.sumpyo_be.domain.complaint;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -326,50 +327,79 @@ class ComplaintInboxIntegrationTest {
   class Repeated {
 
     @Test
-    void 이번_주_5건_이상만_많은_순_센서_매일_일부_없음() throws Exception {
+    void 이번_주_민원이_가장_많은_방_하나_센서_매일() throws Exception {
       for (int i = 0; i < 7; i++) {
         complaint(r618, "STUFFY", null, "RECEIVED", MONDAY.plusHours(i * 7));
       }
-      complaint(r618, "STUFFY", null, "RECEIVED", MONDAY.minusDays(3));   // 지난 주는 안 셈
-      for (int i = 0; i < 5; i++) {
+      complaint(r617, "STUFFY", null, "RECEIVED", MONDAY.minusDays(3));   // 지난 주는 안 셈
+      for (int i = 0; i < 6; i++) {
         complaint(r617, "HOT", null, "RECEIVED", MONDAY.plusHours(i));
       }
-      for (int i = 0; i < 6; i++) {
-        complaint(r604, "STUFFY", null, "RECEIVED", MONDAY.plusHours(i));
-      }
-      for (int i = 0; i < 4; i++) {
-        complaint(r616, "STUFFY", null, "RECEIVED", MONDAY.plusHours(i));   // 4건은 제외
-      }
+      complaint(r616, "STUFFY", null, "RECEIVED", MONDAY.plusHours(1));
       // 618: 월·화·수 모두 1000 이상 → 지난 평일(월~수) 전부 → 매일
       reading(r618, 1100, 24, 50, MONDAY.plusHours(2));
       reading(r618, 900, 24, 50, MONDAY.plusHours(3));
       reading(r618, 1050, 24, 50, MONDAY.plusDays(1));
       reading(r618, 1200, 24, 50, NOW.minusHours(1));
-      // 617: 월만 초과
-      reading(r617, 1100, 24, 50, MONDAY.plusHours(1));
-      reading(r617, 900, 24, 50, MONDAY.plusDays(1));
 
       as(W1, get("/api/complaints/repeated"))
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$.data[*].room", contains("북악관 618호", "북악관 604호", "북악관 617호")))
+          .andExpect(jsonPath("$.data", hasSize(1)))
+          .andExpect(jsonPath("$.data[0].room").value("북악관 618호"))
           .andExpect(jsonPath("$.data[0].roomId").value(r618))
           .andExpect(jsonPath("$.data[0].count").value(7))
           .andExpect(jsonPath("$.data[0].overThresholdDays").value(3))
-          .andExpect(jsonPath("$.data[0].message").value("이번 주 7건 · 센서도 매일 1,000ppm 초과"))
-          .andExpect(jsonPath("$.data[1].overThresholdDays").value(nullValue()))
-          .andExpect(jsonPath("$.data[1].message").value("이번 주 6건"))
-          .andExpect(jsonPath("$.data[2].overThresholdDays").value(1))
-          .andExpect(jsonPath("$.data[2].message").value("이번 주 5건 · 센서도 1일 1,000ppm 초과"));
-
-      as(W1, get("/api/complaints/repeated").param("buildingId", String.valueOf(hyein)))
-          .andExpect(jsonPath("$.data", hasSize(0)));
+          .andExpect(jsonPath("$.data[0].message").value("이번 주 7건 · 센서도 매일 1,000ppm 초과"));
     }
 
     @Test
-    void 지난_주와_잘못된_week() throws Exception {
-      for (int i = 0; i < 5; i++) {
-        complaint(r616, "STUFFY", null, "RECEIVED", MONDAY.minusDays(5).plusHours(i));
+    void 센서_없는_방과_일부만_초과() throws Exception {
+      complaint(r604, "STUFFY", null, "RECEIVED", MONDAY.plusHours(1));   // 604 센서 없음
+      as(W1, get("/api/complaints/repeated"))
+          .andExpect(jsonPath("$.data[0].overThresholdDays").value(nullValue()))
+          .andExpect(jsonPath("$.data[0].message").value("이번 주 1건"));
+
+      complaint(r617, "HOT", null, "RECEIVED", MONDAY.plusHours(1));
+      complaint(r617, "HOT", null, "RECEIVED", MONDAY.plusHours(2));
+      reading(r617, 1100, 24, 50, MONDAY.plusHours(1));   // 월만 초과
+      reading(r617, 900, 24, 50, MONDAY.plusDays(1));
+      as(W1, get("/api/complaints/repeated"))
+          .andExpect(jsonPath("$.data[0].room").value("북악관 617호"))
+          .andExpect(jsonPath("$.data[0].overThresholdDays").value(1))
+          .andExpect(jsonPath("$.data[0].message").value("이번 주 2건 · 센서도 1일 1,000ppm 초과"));
+    }
+
+    @Test
+    void 건수가_같으면_그중_무작위로_하나_모두_1건씩이어도() throws Exception {
+      complaint(r616, "STUFFY", null, "RECEIVED", MONDAY.plusHours(1));
+      complaint(r617, "HOT", null, "RECEIVED", MONDAY.plusHours(2));
+      complaint(r618, "SMELL", null, "RECEIVED", MONDAY.plusHours(3));
+
+      java.util.Set<Integer> seen = new java.util.HashSet<>();
+      for (int i = 0; i < 40; i++) {
+        String body = as(W1, get("/api/complaints/repeated"))
+            .andExpect(jsonPath("$.data", hasSize(1)))
+            .andExpect(jsonPath("$.data[0].count").value(1))
+            .andReturn().getResponse().getContentAsString();
+        seen.add(JsonPath.read(body, "$.data[0].roomId"));
       }
+      assertThat(seen).isSubsetOf((int) r616, (int) r617, (int) r618);
+      assertThat(seen).hasSizeGreaterThan(1);   // 40번 중 한 방만 나올 확률은 3 × (1/3)^40 → 사실상 0
+    }
+
+    @Test
+    void 건물_필터_안에서_가장_많은_방() throws Exception {
+      complaint(r618, "STUFFY", null, "RECEIVED", MONDAY.plusHours(1));
+      complaint(r618, "STUFFY", null, "RECEIVED", MONDAY.plusHours(2));
+      complaint(hyeinRoom, "HUMID", null, "RECEIVED", MONDAY.plusHours(3));
+      as(W1, get("/api/complaints/repeated").param("buildingId", String.valueOf(hyein)))
+          .andExpect(jsonPath("$.data[*].room", contains("혜인관 301호")));
+    }
+
+    @Test
+    void 민원이_없으면_빈_배열_지난_주와_잘못된_week() throws Exception {
+      as(W1, get("/api/complaints/repeated")).andExpect(jsonPath("$.data", hasSize(0)));
+      complaint(r616, "STUFFY", null, "RECEIVED", MONDAY.minusDays(5));
       as(W1, get("/api/complaints/repeated")).andExpect(jsonPath("$.data", hasSize(0)));
       as(W1, get("/api/complaints/repeated").param("week", "2026-W42"))
           .andExpect(jsonPath("$.data[*].room", contains("북악관 616호")));
@@ -559,12 +589,12 @@ class ComplaintInboxIntegrationTest {
     }
 
     @Test
-    void 삼십분_상한이면_예상_CO2_를_부풀리지_않는다() throws Exception {
-      reading(r618, 2000, 22, 50, NOW.minusMinutes(1));
+    void 육십분_상한이면_예상_CO2_를_부풀리지_않는다() throws Exception {
+      reading(r618, 3000, 22, 50, NOW.minusMinutes(1));
       long id = complaint(r618, "STUFFY", null, "RECEIVED", NOW.minusMinutes(5));
       recommend(id, false)
-          .andExpect(jsonPath("$.data.steps[0].minutes").value(30))
-          .andExpect(jsonPath("$.data.expectedCo2After").value(1062));
+          .andExpect(jsonPath("$.data.steps[0].minutes").value(60))
+          .andExpect(jsonPath("$.data.expectedCo2After").value(846));
     }
 
     @Test
@@ -591,7 +621,8 @@ class ComplaintInboxIntegrationTest {
           .andExpect(jsonPath("$.data.expectedCo2After").value(nullValue()))
           .andExpect(jsonPath("$.data.effectMetric").value("TEMP"))
           .andExpect(jsonPath("$.data.effectBefore").value(25))
-          .andExpect(jsonPath("$.data.effectAfter").value(23));
+          .andExpect(jsonPath("$.data.effectAfter").value(23))
+          .andExpect(jsonPath("$.data.effectUnit").value("°C"));
     }
 
     @Test
@@ -602,7 +633,51 @@ class ComplaintInboxIntegrationTest {
       recommend(id, false)
           .andExpect(jsonPath("$.data.effectMetric").value("CO2"))
           .andExpect(jsonPath("$.data.effectBefore").value(1250))
-          .andExpect(jsonPath("$.data.effectAfter").value(757));
+          .andExpect(jsonPath("$.data.effectAfter").value(757))
+          .andExpect(jsonPath("$.data.effectUnit").value("ppm"));
+    }
+
+    @Test
+    void CO2_기준_이상이면_LLM_이_에어컨만_내도_첫_추천과_다른_방법_모두_창문_포함() throws Exception {
+      reading(r618, 1250, 28, 50, NOW.minusMinutes(1));
+      when(llmClient.complete(anyString())).thenReturn("""
+          {"steps":[{"type":"AC_ON","targetTemp":23}],"summary":"에어컨을 23°C로 켜주세요","reason":"더워요"}""");
+      long id = complaint(r618, "HOT", null, "RECEIVED", NOW.minusMinutes(5));
+
+      for (boolean retry : new boolean[] {false, true}) {
+        recommend(id, retry)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.source").value("RULE"))   // 창문 없는 LLM 결과는 규칙 기반으로 대체
+            .andExpect(jsonPath("$.data.steps[?(@.type == 'WINDOW_OPEN')]", hasSize(1)))
+            .andExpect(jsonPath("$.data.expectedCo2After").value(greaterThan(0)))
+            .andExpect(jsonPath("$.data.effectMetric").value("CO2"))
+            .andExpect(jsonPath("$.data.effectBefore").value(1250))
+            .andExpect(jsonPath("$.data.effectAfter").value(greaterThan(0)))
+            .andExpect(jsonPath("$.data.effectUnit").value("ppm"));
+      }
+    }
+
+    @Test
+    void 완료된_에어컨_조치의_완료_카드는_온도_변화() throws Exception {
+      long complaintId = complaint(r618, "HOT", null, "DONE", NOW.minusMinutes(40));
+      jdbc.update("""
+          insert into action (room_id, source, complaint_id, recommend, metric, summary, plan, plan_source,
+                              co2_before, actual_co2_after, ac_target_temp, ac_on_at, status, started_at,
+                              completed_at, measure_at, created_at)
+          values (?, 'COMPLAINT', ?, 'CLOSE', 'TEMP', '에어컨을 23°C로 켜주세요',
+                  '[{"type":"AC_ON","label":"에어컨 켜기","targetTemp":23}]', 'LLM',
+                  436, 430, 23, ?, 'DONE', ?, ?, ?, ?)""",
+          r618, complaintId, NOW.minusMinutes(29), NOW.minusMinutes(30), NOW.minusMinutes(5), NOW.minusMinutes(5),
+          NOW.minusMinutes(35));
+      reading(r618, 436, 28, 50, NOW.minusMinutes(31));   // 시작 때 28°C
+      reading(r618, 430, 24, 50, NOW.minusMinutes(6));    // 완료 때 24°C
+
+      as(W1, get("/api/complaints/{id}", complaintId))
+          .andExpect(jsonPath("$.data.action.status").value("DONE"))
+          .andExpect(jsonPath("$.data.action.effectMetric").value("TEMP"))
+          .andExpect(jsonPath("$.data.action.effectBefore").value(28))
+          .andExpect(jsonPath("$.data.action.effectAfter").value(24))
+          .andExpect(jsonPath("$.data.action.effectUnit").value("°C"));
     }
 
     @Test
@@ -615,7 +690,8 @@ class ComplaintInboxIntegrationTest {
       recommend(cold, false)
           .andExpect(jsonPath("$.data.effectMetric").value(nullValue()))
           .andExpect(jsonPath("$.data.effectBefore").value(nullValue()))
-          .andExpect(jsonPath("$.data.effectAfter").value(nullValue()));
+          .andExpect(jsonPath("$.data.effectAfter").value(nullValue()))
+          .andExpect(jsonPath("$.data.effectUnit").value(nullValue()));
 
       // 에어컨만인데 현재 온도를 모름 (측정 없음, 접수 때 온도도 없음)
       when(llmClient.complete(anyString())).thenReturn("""

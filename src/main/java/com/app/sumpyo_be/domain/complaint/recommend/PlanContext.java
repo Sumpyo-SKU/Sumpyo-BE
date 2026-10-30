@@ -58,6 +58,11 @@ public record PlanContext(
     return co2AtClassEnd != null ? co2AtClassEnd : co2In30;
   }
 
+  /** 지금 CO2 가 사용자 기준 이상 → 추천에 창문 열기 단계가 반드시 있어야 한다 */
+  public boolean co2Over() {
+    return co2 != null && co2 >= thresholds.co2();
+  }
+
   public boolean isRetry() {
     return previous != null;
   }

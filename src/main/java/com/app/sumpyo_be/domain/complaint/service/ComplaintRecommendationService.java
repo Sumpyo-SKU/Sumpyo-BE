@@ -48,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 민원 AI 추천 (POST /api/complaints/{id}/recommendation). LLM 이 조치를 고르고 숫자는 서버가 계산한다.
  * LLM 키 없음·타임아웃(10초)·검증 실패면 규칙 기반 (RulePlanner).
+ * 지금 CO2 가 기준 이상이면 (다른 방법 포함) 창문 열기 단계가 반드시 들어간다: LLM 결과에 없으면 규칙 기반 창문 대안으로.
  * RECEIVED 민원만. 대기 중 추천이 있으면 그대로, [다른 방법](retry)이면 그 추천을 이전과 다른 새 추천으로 교체.
  */
 @Service
@@ -95,8 +96,10 @@ public class ComplaintRecommendationService {
         .map(a -> new PlanContext.Previous(a.getSummary(), planCodec.read(a.getPlan()))).orElse(null) : null;
     PlanContext ctx = context(complaint, previous, now);
 
-    Optional<RawPlan> byLlm = llmPlanner.plan(ctx);
-    RawPlan raw = byLlm.orElseGet(() -> rulePlanner.plan(ctx));
+    // 지금 CO2 가 기준 이상이면 창문 열기 단계가 꼭 있어야 한다. LLM 결과에 없으면 규칙 기반(창문 대안만)으로 대체
+    Optional<RawPlan> byLlm = llmPlanner.plan(ctx)
+        .filter(p -> !ctx.co2Over() || PlanCalculator.windowOpen(p.steps()).isPresent());
+    RawPlan raw = byLlm.orElseGet(() -> ctx.co2Over() ? rulePlanner.planWithWindow(ctx) : rulePlanner.plan(ctx));
     PlanSource source = byLlm.isPresent() ? PlanSource.LLM : PlanSource.RULE;
 
     // 창문 분·예상 효과는 현재와 30분 뒤 예측 중 큰 값에서 시작 (오르는 중이면 미리 반영)

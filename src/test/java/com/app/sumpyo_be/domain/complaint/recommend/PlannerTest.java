@@ -86,20 +86,22 @@ class PlannerTest {
   class Calculator {
 
     @Test
-    void 필요_분은_5분_단위_올림_최대_30분_창문_수에_비례() {
+    void 필요_분은_5분_단위_올림_10분에서_60분_창문_수에_비례() {
       assertThat(PlanCalculator.windowMinutes(1250, 2)).isEqualTo(30);   // 26.0분
       assertThat(PlanCalculator.windowMinutes(1000, 2)).isEqualTo(15);   // 14.1분
       assertThat(PlanCalculator.windowMinutes(1250, 4)).isEqualTo(15);   // 13.0분
-      assertThat(PlanCalculator.windowMinutes(2000, 2)).isEqualTo(30);   // 47.5분 → 상한
-      assertThat(PlanCalculator.windowMinutes(700, 2)).isEqualTo(5);
+      assertThat(PlanCalculator.windowMinutes(2000, 2)).isEqualTo(50);   // 47.5분
+      assertThat(PlanCalculator.windowMinutes(3000, 2)).isEqualTo(60);   // 63.8분 → 상한
+      assertThat(PlanCalculator.windowMinutes(820, 2)).isEqualTo(10);    // 1.7분 → 하한
+      assertThat(PlanCalculator.windowMinutes(700, 2)).isEqualTo(10);
       assertThat(PlanCalculator.windowMinutes(null, 2)).isEqualTo(15);
     }
 
     @Test
-    void 예상_CO2_는_지수_감소_30분으로_목표에_못_미치면_부풀리지_않는다() {
+    void 예상_CO2_는_지수_감소_60분으로_목표에_못_미치면_부풀리지_않는다() {
       assertThat(PlanCalculator.co2After(1250, 2, 30)).isEqualTo(757);
       assertThat(PlanCalculator.co2After(1000, 2, 15)).isEqualTo(790);
-      assertThat(PlanCalculator.co2After(2000, 2, 30)).isEqualTo(1062);   // 800 이 아니라 30분 뒤 값
+      assertThat(PlanCalculator.co2After(3000, 2, 60)).isEqualTo(846);   // 800 이 아니라 60분 뒤 값
       assertThat(PlanCalculator.co2After(null, 2, 30)).isNull();
     }
 
@@ -165,6 +167,25 @@ class PlannerTest {
   class Rule {
 
     private final RulePlanner rule = new RulePlanner();
+
+    @Test
+    void CO2_가_기준_이상이면_창문_열기가_있는_대안만_다른_방법도_창문() {
+      // 더워요: 원래 바깥이 덥거나 정보가 없으면 에어컨 먼저 → CO2 초과면 창문 대안으로
+      PlanContext hotOver = ctx(ComplaintCategory.HOT, 1250, 28, 50, null, null, false, false, null);
+      assertThat(hotOver.co2Over()).isTrue();
+      RawPlan first = rule.planWithWindow(hotOver);
+      assertThat(PlanCalculator.windowOpen(first.steps())).isPresent();
+      RawPlan retry = rule.planWithWindow(ctx(ComplaintCategory.HOT, 1250, 28, 50, null, null, false, false,
+          new PlanContext.Previous("이전", first.steps())));
+      assertThat(PlanCalculator.windowOpen(retry.steps())).isPresent();
+      assertThat(retry.steps()).isNotEqualTo(first.steps());
+
+      // 추워요·설비 고장처럼 대안에 창문 열기가 없어도 창문 2곳
+      assertThat(rule.planWithWindow(ctx(ComplaintCategory.COLD, 1250, 19, 50, null, null, false, false, null)).steps())
+          .containsExactly(open(2));
+      assertThat(rule.planWithWindow(ctx(ComplaintCategory.BROKEN, 1250, 24, 50, null, null, false, false, null)).steps())
+          .containsExactly(open(2));
+    }
 
     @Test
     void 답답함은_창문_2곳_더우면_에어컨_추가_다른_방법은_창문_4곳() {

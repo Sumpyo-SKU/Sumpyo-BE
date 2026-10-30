@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,8 +53,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ComplaintInboxService {
 
   static final int PREVIEW_LENGTH = 50;
-  /** 이번 주 이 건수 이상이면 반복 민원 카드 */
-  static final int REPEATED_FROM = 5;
   private static final Pattern WEEK = Pattern.compile("(\\d{4})-W(\\d{2})");
 
   private final MemberAccess memberAccess;
@@ -111,7 +110,8 @@ public class ComplaintInboxService {
   }
 
   /**
-   * 그 주(월~일, 기본 이번 주) 민원 5건 이상인 방, 많은 순.
+   * 그 주(월~일, 기본 이번 주) 민원이 가장 많은 방 하나. 같은 건수가 여럿이면(모두 1건씩인 경우 포함) 그중 무작위로 하나.
+   * 민원이 없으면 빈 목록. 응답은 기존처럼 배열 (0개 또는 1개).
    * overThresholdDays = 그 주 중 방 최고 CO2 가 조회자 기준 이상인 날 수 (CO2 센서 없는 방은 null).
    * @param week "2026-W43" (ISO 주). null 이면 이번 주
    */
@@ -123,31 +123,35 @@ public class ComplaintInboxService {
     LocalDateTime to = from.plusDays(7);
     int threshold = thresholdService.current().co2();
 
-    List<Object[]> rows = complaintRepository.countByRoomBetween(from, to, REPEATED_FROM);
+    List<Object[]> rows = complaintRepository.countByRoomBetween(from, to, 1);
     Map<Long, Room> rooms = roomRepository.findAllById(rows.stream().map(r -> (Long) r[0]).toList()).stream()
         .collect(Collectors.toMap(Room::getId, Function.identity()));
-    List<RepeatedComplaintResponse> result = new ArrayList<>();
-    for (Object[] row : rows) {
-      Room room = rooms.get((Long) row[0]);
-      if (room == null || (buildingId != null && !room.getBuilding().getId().equals(buildingId))) {
-        continue;
-      }
-      long count = ((Number) row[1]).longValue();
-      Integer overDays = null;
-      String message = "이번 주 " + count + "건";
-      if (room.getSensorLevel().hasCo2()) {
-        List<LocalDate> over = overThresholdDates(room.getId(), from, to, threshold);
-        overDays = over.size();
-        long weekdaysOver = over.stream().filter(d -> d.getDayOfWeek().getValue() <= 5).count();
-        int pastWeekdays = pastWeekdays(monday, now.toLocalDate());
-        if (overDays > 0) {
-          message += " · 센서도 " + (pastWeekdays > 0 && weekdaysOver >= pastWeekdays ? "매일" : overDays + "일")
-              + " " + String.format(Locale.KOREA, "%,d", threshold) + "ppm 초과";
-        }
-      }
-      result.add(new RepeatedComplaintResponse(room.getId(), roomName(room), count, overDays, message));
+    List<Object[]> inBuilding = rows.stream()
+        .filter(r -> rooms.containsKey((Long) r[0]))
+        .filter(r -> buildingId == null || rooms.get((Long) r[0]).getBuilding().getId().equals(buildingId))
+        .toList();
+    if (inBuilding.isEmpty()) {
+      return List.of();
     }
-    return result;
+    long max = ((Number) inBuilding.getFirst()[1]).longValue();   // 많은 순으로 와서 첫 줄이 최대
+    List<Object[]> top = inBuilding.stream().filter(r -> ((Number) r[1]).longValue() == max).toList();
+    Object[] picked = top.get(ThreadLocalRandom.current().nextInt(top.size()));
+
+    Room room = rooms.get((Long) picked[0]);
+    long count = ((Number) picked[1]).longValue();
+    Integer overDays = null;
+    String message = "이번 주 " + count + "건";
+    if (room.getSensorLevel().hasCo2()) {
+      List<LocalDate> over = overThresholdDates(room.getId(), from, to, threshold);
+      overDays = over.size();
+      long weekdaysOver = over.stream().filter(d -> d.getDayOfWeek().getValue() <= 5).count();
+      int pastWeekdays = pastWeekdays(monday, now.toLocalDate());
+      if (overDays > 0) {
+        message += " · 센서도 " + (pastWeekdays > 0 && weekdaysOver >= pastWeekdays ? "매일" : overDays + "일")
+            + " " + String.format(Locale.KOREA, "%,d", threshold) + "ppm 초과";
+      }
+    }
+    return List.of(new RepeatedComplaintResponse(room.getId(), roomName(room), count, overDays, message));
   }
 
   public ComplaintDetailResponse detail(Long complaintId) {

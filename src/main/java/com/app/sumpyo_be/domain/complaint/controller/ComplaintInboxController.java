@@ -59,7 +59,8 @@ public class ComplaintInboxController {
   }
 
   @Operation(summary = "이번 주 반복 민원",
-      description = "권한 W, A. 그 주(월~일) 민원이 5건 이상인 방, 많은 순. overThresholdDays 는 그 주 중 방 최고 CO2 가 "
+      description = "권한 W, A. 그 주(월~일) 민원이 가장 많은 방 1개 (배열, 민원이 없으면 빈 배열). "
+          + "건수가 같은 방이 여럿이면(모두 1건씩인 경우 포함) 그중 무작위로 하나라 호출마다 바뀔 수 있음. overThresholdDays 는 그 주 중 방 최고 CO2 가 "
           + "내 기준 이상이었던 날 수(CO2 센서 없는 방은 null). message 예: '이번 주 7건 · 센서도 매일 1,000ppm 초과'.")
   @ApiErrors(value = {GlobalErrorCode.INVALID_WEEK}, auth = true)
   @Tag(name = ScreenTag.INBOX)
@@ -85,10 +86,12 @@ public class ComplaintInboxController {
       description = "권한 W, A. 접수(RECEIVED) 민원만, 아니면 409. 대기 중인 추천이 있으면 그대로 돌려주고, "
           + "{ \"retry\": true }([다른 방법])면 이전 추천과 다른 새 추천으로 교체. "
           + "LLM 이 조치(창문 열기·닫기, 에어컨)를 고르고 시간·예상 CO2 는 서버가 계산 "
-          + "(k = 1.8회/시간 × 창문 수/2, 바깥 420ppm, 목표 800ppm, 5분 단위 최대 30분). "
+          + "(k = 1.8회/시간 × 창문 수/2, 바깥 420ppm, 목표 800ppm, 5분 단위 올림 10~60분). "
           + "LLM 키 없음·10초 타임아웃·검증 실패면 규칙 기반(source RULE). 추천대로 처리 시작은 POST /api/actions/{actionId}/start. "
-          + "화면 '예상 효과'는 effectMetric·effectBefore·effectAfter: 창문 단계가 있으면 CO2(co2Before → expectedCo2After), "
-          + "없고 에어컨 단계가 있으면 TEMP(현재 온도 → 희망 온도, 예: 25 → 23), 계산할 수 없으면 셋 다 null (0 으로 그리지 말 것).")
+          + "화면 '예상 효과'는 effectMetric·effectBefore·effectAfter·effectUnit: 창문 단계가 있으면 CO2(co2Before → expectedCo2After, ppm), "
+          + "없고 에어컨 단계가 있으면 TEMP(현재 온도 → 희망 온도, °C, 예: 25 → 23), 계산할 수 없으면 전부 null (0 으로 그리지 말 것). "
+          + "완료 카드의 변화도 같은 규칙 (CO2 결과, 에어컨만이면 시작 때 → 완료 때 온도). "
+          + "지금 CO2 가 내 기준 이상이면 첫 추천·[다른 방법] 모두 창문 열기 단계가 반드시 들어간다 (LLM 결과에 없으면 규칙 기반 창문 대안).")
   @ApiErrors(value = {GlobalErrorCode.COMPLAINT_NOT_FOUND, GlobalErrorCode.INVALID_COMPLAINT_STATUS}, auth = true)
   @Tag(name = ScreenTag.INBOX)
   @PostMapping("/{complaintId}/recommendation")

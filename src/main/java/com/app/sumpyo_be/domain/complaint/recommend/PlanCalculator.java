@@ -11,8 +11,8 @@ import java.util.regex.Pattern;
 /**
  * 추천의 숫자는 LLM 이 아니라 서버가 계산한다 (617호 실측으로 잡은 설정값).
  * 창문 환기: C(t) = 420 + (C0 − 420) × e^(−k·t), k = 1.8회/시간 (창문 2곳 기준, 창문 수에 비례).
- * 필요 분 = ln((C0 − 420) / (800 − 420)) / k × 60 → 5분 단위 올림, 최대 30분.
- * 30분으로 목표에 못 미치면 30분 뒤 값을 그대로 쓴다 (예상 효과를 부풀리지 않는다).
+ * 필요 분 = ln((C0 − 420) / (800 − 420)) / k × 60 → 5분 단위 올림, 10~60분 (1,250ppm·2곳 → 30분, 757ppm).
+ * 60분으로 목표에 못 미치면 60분 뒤 값을 그대로 쓴다 (예상 효과를 부풀리지 않는다).
  */
 public final class PlanCalculator {
 
@@ -22,7 +22,8 @@ public final class PlanCalculator {
   public static final double K_OPEN_TWO_WINDOWS = 1.8;
   public static final int OUTDOOR_CO2 = 420;
   public static final int TARGET_CO2 = 800;
-  public static final int MAX_MINUTES = 30;
+  public static final int MIN_MINUTES = 10;
+  public static final int MAX_MINUTES = 60;
   public static final int MINUTE_STEP = 5;
   /** 현재 CO2 를 모를 때 창문 환기 시간 (결과 측정 시각에도 같은 값) */
   public static final int DEFAULT_MINUTES = 15;
@@ -38,17 +39,17 @@ public final class PlanCalculator {
     return K_OPEN_TWO_WINDOWS * windows / 2.0;
   }
 
-  /** 목표(800)까지 필요한 분. 5분 단위 올림, 5~30분. CO2 를 모르면 15분 */
+  /** 목표(800)까지 필요한 분. 5분 단위 올림, 10~60분. CO2 를 모르면 15분 */
   public static int windowMinutes(Integer co2, int windows) {
     if (co2 == null) {
       return DEFAULT_MINUTES;
     }
     if (co2 <= TARGET_CO2) {
-      return MINUTE_STEP;
+      return MIN_MINUTES;
     }
     double minutes = Math.log((double) (co2 - OUTDOOR_CO2) / (TARGET_CO2 - OUTDOOR_CO2)) / k(windows) * 60;
     int rounded = (int) Math.ceil(minutes / MINUTE_STEP) * MINUTE_STEP;
-    return Math.clamp(rounded, MINUTE_STEP, MAX_MINUTES);
+    return Math.clamp(rounded, MIN_MINUTES, MAX_MINUTES);
   }
 
   /** minutes 동안 창문을 열었을 때 CO2. 지금 CO2 를 모르면 null */

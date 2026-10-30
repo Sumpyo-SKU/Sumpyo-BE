@@ -3,6 +3,7 @@ package com.app.sumpyo_be.domain.action.service;
 import com.app.sumpyo_be.domain.action.dto.response.ActionStep;
 import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
 import com.app.sumpyo_be.domain.action.entity.Action;
+import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.entity.Metric;
 import com.app.sumpyo_be.domain.action.entity.PlanStep;
 import com.app.sumpyo_be.domain.action.entity.StepType;
@@ -10,7 +11,7 @@ import com.app.sumpyo_be.domain.air.AirQualityJudge;
 import com.app.sumpyo_be.domain.air.Thresholds;
 import com.app.sumpyo_be.domain.complaint.repository.ComplaintRepository;
 import com.app.sumpyo_be.domain.member.repository.MemberRepository;
-import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
+import com.app.sumpyo_be.domain.reading.entity.SensorReading;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -31,14 +32,31 @@ public class ComplaintActionAssembler {
   private final ComplaintRepository complaintRepository;
   private final Clock clock;
 
-  /** 예상 효과 (지표, 조치 전, 조치 후). 계산할 수 없으면 NONE (셋 다 null) */
+  /** 효과 (지표, 조치 전, 조치 후). 계산할 수 없으면 NONE (전부 null) */
   record Effect(Metric metric, Integer before, Integer after) {
     static final Effect NONE = new Effect(null, null, null);
+
+    /** CO2 "ppm", TEMP "°C", 없으면 null */
+    String unit() {
+      if (metric == null) {
+        return null;
+      }
+      return switch (metric) {
+        case CO2 -> "ppm";
+        case TEMP -> "°C";
+        case HUMIDITY -> "%";
+      };
+    }
   }
 
   public ComplaintActionResponse toResponse(Action a) {
     List<PlanStep> plan = planCodec.read(a.getPlan());
-    Effect effect = effect(plan, a.getCo2Before(), a.getExpectedCo2After(), acTargetTemp(a, plan), () -> currentTemp(a));
+    boolean done = a.getStatus() == ActionStatus.DONE;
+    Integer target = acTargetTemp(a, plan);
+    Effect effect = done
+        ? effect(plan, a.getCo2Before(), a.getActualCo2After(), () -> tempAt(a, a.getStartedAt()),
+            () -> tempAt(a, a.getMeasureAt() != null ? a.getMeasureAt() : a.getCompletedAt()))
+        : effect(plan, a.getCo2Before(), a.getExpectedCo2After(), () -> currentTemp(a), () -> target);
     return ComplaintActionResponse.builder()
         .actionId(a.getId())
         .status(a.getStatus())
@@ -50,6 +68,7 @@ public class ComplaintActionAssembler {
         .effectMetric(effect.metric())
         .effectBefore(effect.before())
         .effectAfter(effect.after())
+        .effectUnit(effect.unit())
         .forecastCo2(a.getForecastCo2())
         .steps(steps(a, plan))
         .completedAt(a.getCompletedAt())
@@ -61,21 +80,23 @@ public class ComplaintActionAssembler {
   }
 
   /**
-   * 예상 효과. 창문 단계가 있으면 CO2 (조치 전 CO2 → 예상 CO2), 아니면 에어컨 단계가 있을 때 TEMP (현재 온도 → 희망 온도).
+   * 효과. 창문 단계가 있으면 CO2 (조치 전 → co2After), 아니면 에어컨 단계가 있을 때 TEMP (tempBefore → tempAfter).
    * 값이 하나라도 없으면 다음 규칙, 다 안 되면 NONE (프론트가 null 을 0 으로 그리지 않게 0 은 만들지 않는다).
-   * @param currentTemp 현재 온도 (에어컨 효과를 낼 때만 부른다)
+   * 추천·처리 중: co2After = 예상 CO2, 온도는 현재 → 희망 온도. 완료: co2After = 결과 CO2, 온도는 시작 때 → 완료 때 측정
+   * @param tempBefore / tempAfter 에어컨 효과를 낼 때만 부른다
    */
-  static Effect effect(List<PlanStep> plan, Integer co2Before, Integer expectedCo2After, Integer acTargetTemp,
-      Supplier<Integer> currentTemp) {
+  static Effect effect(List<PlanStep> plan, Integer co2Before, Integer co2After, Supplier<Integer> tempBefore,
+      Supplier<Integer> tempAfter) {
     boolean window = plan.stream().anyMatch(s -> s.type() == StepType.WINDOW_OPEN);
-    if (window && co2Before != null && expectedCo2After != null) {
-      return new Effect(Metric.CO2, co2Before, expectedCo2After);
+    if (window && co2Before != null && co2After != null) {
+      return new Effect(Metric.CO2, co2Before, co2After);
     }
     boolean ac = plan.stream().anyMatch(s -> s.type() == StepType.AC_ON);
-    if (ac && acTargetTemp != null) {
-      Integer temp = currentTemp.get();
-      if (temp != null) {
-        return new Effect(Metric.TEMP, temp, acTargetTemp);
+    if (ac) {
+      Integer after = tempAfter.get();
+      Integer before = after == null ? null : tempBefore.get();
+      if (before != null) {
+        return new Effect(Metric.TEMP, before, after);
       }
     }
     return Effect.NONE;
@@ -92,14 +113,23 @@ public class ComplaintActionAssembler {
 
   /** 현재 온도: 최근 10분 측정, 없으면 민원 접수 때 값 (반올림) */
   private Integer currentTemp(Action a) {
-    LocalDateTime now = LocalDateTime.now(clock);
-    Integer measured = readingRepository.findLatestSince(List.of(a.getRoom().getId()), now.minus(AirQualityJudge.FRESH_WINDOW))
-        .stream().findFirst().map(ReadingSnapshot::getTemp).orElse(null);
+    Integer measured = tempAt(a, LocalDateTime.now(clock));
     if (measured != null || a.getComplaintId() == null) {
       return measured;
     }
     return complaintRepository.findById(a.getComplaintId())
         .map(c -> c.getTempSnapshot() == null ? null : (int) Math.round(c.getTempSnapshot().doubleValue()))
+        .orElse(null);
+  }
+
+  /** at 이전 10분 안의 가장 늦은 측정 온도. at 이 없거나 측정이 없으면 null */
+  private Integer tempAt(Action a, LocalDateTime at) {
+    if (at == null) {
+      return null;
+    }
+    return readingRepository.findFirstByRoomIdAndMeasuredAtBetweenOrderByMeasuredAtDesc(a.getRoom().getId(),
+            at.minus(AirQualityJudge.FRESH_WINDOW), at)
+        .map(SensorReading::getTemp)
         .orElse(null);
   }
 
