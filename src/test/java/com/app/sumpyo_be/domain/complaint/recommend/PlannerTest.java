@@ -65,6 +65,21 @@ class PlannerTest {
           .contains("그대로 두면 30분 뒤 1,180ppm, 수업 종료 시 1,280ppm 예상",
               "민원 접수 때: CO2 1250ppm, 온도 24.1°C, 습도 61%", "민원 분류가 설비 고장일 때만");
     }
+
+    @Test
+    void 프롬프트_제목은_짧은_지시문() {
+      assertThat(LlmPlanner.prompt(withForecast(900, null, null)))
+          .contains("근로학생에게 하는 짧은 지시문", "'학생들의 요청에 따라' 같은 설명 문구는 넣지 마",
+              "예: \"에어컨을 23°C로 켜주세요\"");
+    }
+
+    @Test
+    void 지금_CO2_가_기준_이상이면_창문_환기_단계를_반드시_넣으라고_한다() {
+      assertThat(LlmPlanner.prompt(withForecast(1000, null, null)))
+          .contains("지금 CO2 가 기준(1000ppm) 이상이니 민원 분류와 상관없이 WINDOW_OPEN 단계를 반드시 넣어");
+      assertThat(LlmPlanner.prompt(withForecast(999, null, null))).doesNotContain("WINDOW_OPEN 단계를 반드시");
+      assertThat(LlmPlanner.prompt(withForecast(null, 1200, null))).doesNotContain("WINDOW_OPEN 단계를 반드시");
+    }
   }
 
   @Nested

@@ -82,11 +82,18 @@ public class LlmPlanner {
         .append("- type 은 WINDOW_OPEN, WINDOW_CLOSE, AC_ON 만. steps 는 0~3개, 같은 type 은 한 번만\n")
         .append("- WINDOW_OPEN 은 windows(열 창문 수 1~4), AC_ON 은 targetTemp(희망 온도 18~28)\n")
         .append("- summary 는 근로생이 할 일 한 문장, reason 은 이유 한 문장. 각 100자 이내, 존댓말\n")
+        .append("- summary(제목)는 근로학생에게 하는 짧은 지시문으로. '학생들의 요청에 따라' 같은 설명 문구는 넣지 마. ")
+        .append("예: \"에어컨을 23°C로 켜주세요\". 온도를 쓰면 targetTemp 와 같은 값으로\n")
         .append("- 분·ppm 같은 숫자는 쓰지 마 (시간과 예상 CO2 는 서버가 넣는다)\n")
         .append("- 답답함·냄새는 창문 환기가 기본. 에어컨은 공기를 바꾸지 못하므로 실내가 적정 온도보다 더울 때만 추가\n")
         .append("- 비 예보가 있거나 미세먼지가 나쁨이면 창문 대신 다른 방법\n")
         .append("- 민원 분류가 설비 고장일 때만 steps 없이 summary 를 \"시설팀에 고장 신고해주세요\" 로. ")
         .append("다른 분류는 지금 수치가 정상이어도 학생이 불편을 느낀 것이니 근로생이 할 수 있는 조치를 골라\n");
+    if (ctx.co2() != null && ctx.co2() >= ctx.thresholds().co2()) {
+      sb.append("- 지금 CO2 가 기준(").append(ctx.thresholds().co2())
+          .append("ppm) 이상이니 민원 분류와 상관없이 WINDOW_OPEN 단계를 반드시 넣어 ")
+          .append("(비 예보·미세먼지 나쁨이면 창문 수를 줄여서)\n");
+    }
     if (ctx.isRetry()) {
       sb.append("- 이전 추천과 다른 방법을 골라\n");
     }

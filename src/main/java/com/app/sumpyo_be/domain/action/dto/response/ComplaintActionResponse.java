@@ -1,6 +1,7 @@
 package com.app.sumpyo_be.domain.action.dto.response;
 
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
+import com.app.sumpyo_be.domain.action.entity.Metric;
 import com.app.sumpyo_be.domain.action.entity.PlanSource;
 import com.app.sumpyo_be.domain.action.entity.StepType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -41,8 +42,22 @@ public class ComplaintActionResponse {
   private Integer co2Before;
 
   @Schema(description = "예상 CO2 (ppm). 창문 단계가 있을 때만 (420 + (C−420)·e^(−k·분/60), C = 현재와 30분 뒤 예측 중 큰 값), "
-      + "아니면 null", example = "779")
+      + "아니면 null. 화면 '예상 효과'는 effectMetric·effectBefore·effectAfter 를 쓸 것 (null 을 0 으로 그리지 말 것)",
+      example = "779", nullable = true)
   private Integer expectedCo2After;
+
+  @Schema(description = "예상 효과 지표. 창문 단계가 있으면 CO2 (co2Before → expectedCo2After), "
+      + "없고 에어컨 단계가 있으면 TEMP (현재 온도 → 희망 온도). 계산할 수 없으면 null 이고 effectBefore·effectAfter 도 null",
+      example = "CO2", nullable = true)
+  private Metric effectMetric;
+
+  @Schema(description = "예상 효과 조치 전 값. CO2 면 co2Before (ppm), TEMP 면 현재 온도 (°C, 최근 10분 측정, 없으면 민원 접수 때 값). "
+      + "effectMetric 이 null 이면 null", example = "1250", nullable = true)
+  private Integer effectBefore;
+
+  @Schema(description = "예상 효과 조치 후 값. CO2 면 expectedCo2After (ppm), TEMP 면 에어컨 희망 온도 (°C). "
+      + "effectMetric 이 null 이면 null", example = "779", nullable = true)
+  private Integer effectAfter;
 
   @Schema(description = "그대로 두면 예상 CO2 (ppm, predict.py 예측: 수업 종료 시각, 수업이 없으면 30분 뒤). 예측이 없으면 null. "
       + "화면 '그대로 두면 1,280ppm'", example = "1280")

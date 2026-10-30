@@ -537,6 +537,54 @@ class ComplaintInboxIntegrationTest {
       long id = complaint(r618, "STUFFY", null, "IN_PROGRESS", NOW.minusMinutes(5));
       recommend(id, false).andExpect(status().isConflict());
     }
+
+    @Test
+    void 에어컨만_있는_추천의_예상_효과는_온도_25에서_23() throws Exception {
+      reading(r618, 436, 25, 50, NOW.minusMinutes(1));
+      when(llmClient.complete(anyString())).thenReturn("""
+          {"steps":[{"type":"AC_ON","targetTemp":23}],"summary":"에어컨을 23°C로 켜주세요","reason":"실내가 적정보다 더워요"}""");
+      long id = complaint(r618, "HOT", null, "RECEIVED", NOW.minusMinutes(5));
+      recommend(id, false)
+          .andExpect(jsonPath("$.data.summary").value("에어컨을 23°C로 켜주세요"))
+          .andExpect(jsonPath("$.data.co2Before").value(436))
+          .andExpect(jsonPath("$.data.expectedCo2After").value(nullValue()))
+          .andExpect(jsonPath("$.data.effectMetric").value("TEMP"))
+          .andExpect(jsonPath("$.data.effectBefore").value(25))
+          .andExpect(jsonPath("$.data.effectAfter").value(23));
+    }
+
+    @Test
+    void 창문과_에어컨이면_예상_효과는_CO2() throws Exception {
+      reading(r618, 1250, 25, 50, NOW.minusMinutes(1));
+      when(llmClient.complete(anyString())).thenReturn(LLM_OK);
+      long id = complaint(r618, "STUFFY", null, "RECEIVED", NOW.minusMinutes(5));
+      recommend(id, false)
+          .andExpect(jsonPath("$.data.effectMetric").value("CO2"))
+          .andExpect(jsonPath("$.data.effectBefore").value(1250))
+          .andExpect(jsonPath("$.data.effectAfter").value(757));
+    }
+
+    @Test
+    void 계산할_수_없으면_예상_효과는_전부_null() throws Exception {
+      // 창문 닫기만 → CO2·온도 효과 없음
+      reading(r618, 436, 19, 50, NOW.minusMinutes(1));
+      when(llmClient.complete(anyString())).thenReturn("""
+          {"steps":[{"type":"WINDOW_CLOSE"}],"summary":"창문을 닫아주세요","reason":"찬 바람이 들어와요"}""");
+      long cold = complaint(r618, "COLD", null, "RECEIVED", NOW.minusMinutes(5));
+      recommend(cold, false)
+          .andExpect(jsonPath("$.data.effectMetric").value(nullValue()))
+          .andExpect(jsonPath("$.data.effectBefore").value(nullValue()))
+          .andExpect(jsonPath("$.data.effectAfter").value(nullValue()));
+
+      // 에어컨만인데 현재 온도를 모름 (측정 없음, 접수 때 온도도 없음)
+      when(llmClient.complete(anyString())).thenReturn("""
+          {"steps":[{"type":"AC_ON","targetTemp":23}],"summary":"에어컨을 23°C로 켜주세요","reason":"더워요"}""");
+      long hot = complaint(r617, "HOT", null, "RECEIVED", NOW.minusMinutes(5));
+      recommend(hot, false)
+          .andExpect(jsonPath("$.data.effectMetric").value(nullValue()))
+          .andExpect(jsonPath("$.data.effectBefore").value(nullValue()))
+          .andExpect(jsonPath("$.data.effectAfter").value(nullValue()));
+    }
   }
 
   @Nested

@@ -83,7 +83,9 @@ public class ComplaintInboxController {
           + "{ \"retry\": true }([다른 방법])면 이전 추천과 다른 새 추천으로 교체. "
           + "LLM 이 조치(창문 열기·닫기, 에어컨)를 고르고 시간·예상 CO2 는 서버가 계산 "
           + "(k = 1.8회/시간 × 창문 수/2, 바깥 420ppm, 목표 800ppm, 5분 단위 최대 30분). "
-          + "LLM 키 없음·10초 타임아웃·검증 실패면 규칙 기반(source RULE). 추천대로 처리 시작은 POST /api/actions/{actionId}/start.")
+          + "LLM 키 없음·10초 타임아웃·검증 실패면 규칙 기반(source RULE). 추천대로 처리 시작은 POST /api/actions/{actionId}/start. "
+          + "화면 '예상 효과'는 effectMetric·effectBefore·effectAfter: 창문 단계가 있으면 CO2(co2Before → expectedCo2After), "
+          + "없고 에어컨 단계가 있으면 TEMP(현재 온도 → 희망 온도, 예: 25 → 23), 계산할 수 없으면 셋 다 null (0 으로 그리지 말 것).")
   @ApiErrors(value = {GlobalErrorCode.COMPLAINT_NOT_FOUND, GlobalErrorCode.INVALID_COMPLAINT_STATUS}, auth = true)
   @Tag(name = ScreenTag.INBOX)
   @PostMapping("/{complaintId}/recommendation")
