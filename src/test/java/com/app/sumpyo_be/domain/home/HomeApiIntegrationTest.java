@@ -55,7 +55,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
     "sumpyo.simulator.enabled=false",
     "sumpyo.notification.scan-enabled=false",
     "sumpyo.outdoor.collect-enabled=false",
-    "sumpyo.action.rain-close-enabled=false",
+    "sumpyo.action.rain-close-enabled=false", "sumpyo.action.auto-complete-enabled=false",
     "sumpyo.outdoor.api-key=test-key", "sumpyo.outdoor.nx=60", "sumpyo.outdoor.ny=127",
     "sumpyo.outdoor.station=정릉로",
     "sumpyo.demo.password=test-demo-password",

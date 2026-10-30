@@ -9,6 +9,7 @@ import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
 import com.app.sumpyo_be.domain.action.entity.Action;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.entity.PlanStep;
+import com.app.sumpyo_be.domain.action.entity.Recommend;
 import com.app.sumpyo_be.domain.action.entity.StepType;
 import com.app.sumpyo_be.domain.action.repository.ActionRepository;
 import com.app.sumpyo_be.domain.air.AirQualityJudge;
@@ -25,12 +26,15 @@ import com.app.sumpyo_be.domain.member.service.MemberAccess;
 import com.app.sumpyo_be.domain.member.service.ThresholdService;
 import com.app.sumpyo_be.domain.reading.dto.projection.ReadingSnapshot;
 import com.app.sumpyo_be.domain.reading.repository.SensorReadingRepository;
+import com.app.sumpyo_be.domain.room.entity.Room;
+import com.app.sumpyo_be.domain.room.repository.RoomRepository;
 import com.app.sumpyo_be.domain.schedule.entity.ClassSchedule;
 import com.app.sumpyo_be.domain.schedule.service.ClassScheduleService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ActionService {
 
   private final ActionRepository actionRepository;
+  private final RoomRepository roomRepository;
   private final SensorReadingRepository readingRepository;
   private final ComplaintRepository complaintRepository;
   private final MemberRepository memberRepository;
@@ -122,6 +127,31 @@ public class ActionService {
     if (!action.getStatus().isWaiting()) {
       throw new CustomException(GlobalErrorCode.INVALID_ACTION_STATUS);
     }
+    return start(action);
+  }
+
+  /**
+   * [환기 하기] 강의실 상태(정상 포함)와 상관없이 환기를 시작한다.
+   * 1) 이미 환기 중(IN_PROGRESS)인 OPEN 조치가 있으면 새로 만들지 않고 그대로 반환
+   * 2) 대기 중(PENDING/CHECKED)인 OPEN 추천 조치가 있으면 그걸 시작
+   * 3) 둘 다 없으면 MANUAL 조치를 만들어 바로 시작
+   * 방 행을 잠가서 연달아 눌러도 조치가 두 개 생기지 않는다.
+   */
+  public ActionStartResponse ventilate(Long roomId) {
+    Room room = roomRepository.findByIdForUpdate(roomId)
+        .orElseThrow(() -> new CustomException(GlobalErrorCode.ROOM_NOT_FOUND));
+    Optional<Action> inProgress = actionRepository.findTopByRoomIdAndRecommendAndStatusInOrderByCreatedAtDescIdDesc(
+        roomId, Recommend.OPEN, List.of(ActionStatus.IN_PROGRESS));
+    if (inProgress.isPresent()) {
+      return ActionStartResponse.of(inProgress.get(), memberName(inProgress.get().getMemberId()));
+    }
+    Action action = actionRepository.findTopByRoomIdAndRecommendAndStatusInOrderByCreatedAtDescIdDesc(
+            roomId, Recommend.OPEN, ActionStatus.WAITING)
+        .orElseGet(() -> actionRepository.save(Action.manualVentilation(room, LocalDateTime.now(clock))));
+    return start(action);
+  }
+
+  private ActionStartResponse start(Action action) {
     LocalDateTime now = LocalDateTime.now(clock);
     // 로그인 전에는 데모 근로생(worker01). 데모 계정이 없으면 null
     Long memberId = currentMemberProvider.currentMemberId().orElse(null);

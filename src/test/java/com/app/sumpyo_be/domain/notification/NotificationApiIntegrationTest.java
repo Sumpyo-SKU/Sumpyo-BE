@@ -56,7 +56,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
     "sumpyo.simulator.enabled=false",
     "sumpyo.notification.scan-enabled=false",
     // 로컬 .env 에 공공데이터 키가 있어도 외부 API 를 부르지 않도록
-    "sumpyo.outdoor.collect-enabled=false", "sumpyo.action.rain-close-enabled=false", "sumpyo.outdoor.api-key=",
+    "sumpyo.outdoor.collect-enabled=false", "sumpyo.action.rain-close-enabled=false", "sumpyo.action.auto-complete-enabled=false", "sumpyo.outdoor.api-key=",
     "sumpyo.demo.password=test-demo-password",
     "sumpyo.demo.header-login=true",
     "sumpyo.complaint.salt=test-salt",
@@ -226,10 +226,19 @@ class NotificationApiIntegrationTest {
     }
 
     @Test
-    void 남은_분은_올림() {
-      predictionAction(r618, 1250, NOW.plusMinutes(14).plusSeconds(10));
+    void 남은_분은_반올림() {
+      predictionAction(r618, 1250, NOW.plusMinutes(14).plusSeconds(30));
+      predictionAction(r617, 1250, NOW.plusMinutes(14).plusSeconds(10));
       scanService.scan(NOW);
-      assertThat(notifications(W1).getFirst()).containsEntry("title", "618호 15분 뒤 환기 필요");
+      assertThat(notifications(W1)).extracting(n -> n.get("title"))
+          .containsExactlyInAnyOrder("618호 15분 뒤 환기 필요", "617호 14분 뒤 환기 필요");
+    }
+
+    @Test
+    void 남은_시간이_30초_이내여도_0분_뒤가_아니라_1분_뒤() {
+      predictionAction(r618, 1250, NOW.plusSeconds(20));
+      scanService.scan(NOW);
+      assertThat(notifications(W1).getFirst()).containsEntry("title", "618호 1분 뒤 환기 필요");
     }
 
     @Test

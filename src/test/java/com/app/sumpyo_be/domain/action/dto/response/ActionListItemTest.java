@@ -20,9 +20,11 @@ class ActionListItemTest {
     assertThat(ActionListItem.timing(NOW.minusMinutes(5), NOW)).isEqualTo(ActionTiming.NOW);
     assertThat(ActionListItem.timing(NOW, NOW)).isEqualTo(ActionTiming.NOW);
     assertThat(ActionListItem.timing(NOW.plusMinutes(10), NOW)).isEqualTo(ActionTiming.NOW);
-    assertThat(ActionListItem.timing(NOW.plusMinutes(10).plusSeconds(1), NOW)).isEqualTo(ActionTiming.SOON);
-    assertThat(ActionListItem.timing(NOW.plusMinutes(30), NOW)).isEqualTo(ActionTiming.SOON);
-    assertThat(ActionListItem.timing(NOW.plusMinutes(31), NOW)).isEqualTo(ActionTiming.LATER);
+    // 남은 분은 반올림: 10분 29초 → 10분(NOW), 10분 30초 → 11분(SOON)
+    assertThat(ActionListItem.timing(NOW.plusMinutes(10).plusSeconds(29), NOW)).isEqualTo(ActionTiming.NOW);
+    assertThat(ActionListItem.timing(NOW.plusMinutes(10).plusSeconds(30), NOW)).isEqualTo(ActionTiming.SOON);
+    assertThat(ActionListItem.timing(NOW.plusMinutes(30).plusSeconds(29), NOW)).isEqualTo(ActionTiming.SOON);
+    assertThat(ActionListItem.timing(NOW.plusMinutes(30).plusSeconds(30), NOW)).isEqualTo(ActionTiming.LATER);
   }
 
   private static Action action(ActionSource source, Recommend recommend, Metric metric) {
@@ -46,11 +48,12 @@ class ActionListItemTest {
   }
 
   @Test
-  void reason은_지났으면_기준_초과_아니면_남은_분_올림() {
+  void reason은_지났으면_기준_초과_아니면_남은_분_반올림() {
     assertThat(ActionListItem.reason(CO2_OPEN, NOW.minusMinutes(1), NOW)).isEqualTo("기준 초과");
     assertThat(ActionListItem.reason(CO2_OPEN, NOW, NOW)).isEqualTo("기준 초과");
     assertThat(ActionListItem.reason(CO2_OPEN, NOW.plusMinutes(10), NOW)).isEqualTo("10분 뒤 기준 초과 예정");
     assertThat(ActionListItem.reason(CO2_OPEN, NOW.plusSeconds(9 * 60 + 30), NOW)).isEqualTo("10분 뒤 기준 초과 예정");
+    assertThat(ActionListItem.reason(CO2_OPEN, NOW.plusSeconds(19 * 60 + 20), NOW)).isEqualTo("19분 뒤 기준 초과 예정");
     assertThat(ActionListItem.reason(CO2_OPEN, NOW.plusMinutes(90), NOW)).isEqualTo("1시간 30분 뒤 기준 초과 예정");
   }
 

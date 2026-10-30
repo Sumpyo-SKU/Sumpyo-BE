@@ -4,6 +4,7 @@ import com.app.sumpyo_be.domain.action.entity.Action;
 import com.app.sumpyo_be.domain.action.entity.ActionSource;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,7 +25,7 @@ public class ActionStartResponse {
   @Schema(description = "강의실 ID", example = "42")
   private Long roomId;
 
-  @Schema(description = "조치 발생 원인 (PREDICTION: 예측, COMPLAINT: 민원)", example = "PREDICTION")
+  @Schema(description = "조치 발생 원인 (PREDICTION: 예측, COMPLAINT: 민원, MANUAL: 추천 없이 직접 환기 하기)", example = "PREDICTION")
   private ActionSource source;
 
   @Schema(description = "연결된 민원 ID (민원 조치가 아니면 null)", example = "null")
@@ -48,6 +49,9 @@ public class ActionStartResponse {
   @Schema(description = "조치 상태 (시작 후 IN_PROGRESS)", example = "IN_PROGRESS")
   private ActionStatus status;
 
+  @Schema(description = "환기 시작 시각 (KST). 강의실 상세 ventilatingAction.startedAt 과 같은 값", example = "2026-10-21T14:00:00")
+  private LocalDateTime startedAt;
+
   @Schema(description = "처리자 이름. 비로그인이면 null", example = "김근로")
   private String handledBy;
 
@@ -63,6 +67,7 @@ public class ActionStartResponse {
         .actualCo2After(a.getActualCo2After())
         .steps(ActionStep.from(a))
         .status(a.getStatus())
+        .startedAt(a.getStartedAt())
         .handledBy(handledBy)
         .build();
   }

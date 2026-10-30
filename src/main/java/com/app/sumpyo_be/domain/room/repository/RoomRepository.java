@@ -3,10 +3,12 @@ package com.app.sumpyo_be.domain.room.repository;
 import com.app.sumpyo_be.domain.room.entity.Room;
 import com.app.sumpyo_be.domain.room.entity.RoomType;
 import com.app.sumpyo_be.domain.room.entity.SensorLevel;
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -36,6 +38,11 @@ public interface RoomRepository extends JpaRepository<Room, Long> {
 
   @Query("select r from Room r join fetch r.building where r.id = :id")
   Optional<Room> findWithBuildingById(@Param("id") Long id);
+
+  /** 방 행 잠금 (select ... for update). [환기 하기] 를 연달아 눌러도 같은 방 조치가 두 개 생기지 않게 */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select r from Room r where r.id = :id")
+  Optional<Room> findByIdForUpdate(@Param("id") Long id);
 
   @Query("select r from Room r join fetch r.building where r.code = :code")
   Optional<Room> findWithBuildingByCode(@Param("code") String code);
