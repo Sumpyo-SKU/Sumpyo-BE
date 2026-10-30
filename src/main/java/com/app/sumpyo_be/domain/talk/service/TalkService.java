@@ -208,17 +208,10 @@ public class TalkService {
     return new TalkReplyDeleteResponse(replyId, post.getStatus());
   }
 
-  /** 글쓴이 이름 + 담당 구역 ("북악관 5·6층", 여러 건물이면 첫 건물, 없으면 null) */
+  /** 글쓴이 이름 + 근로 구역 ("북악관 · 6층", 여러 층이면 "북악관 · 5·6층", 여러 건물이면 첫 건물, 없으면 null) */
   private TalkDetailResponse.Sender sender(Long senderId) {
     String name = memberRepository.findById(senderId).map(Member::getName).orElse(null);
-    List<MemberZone> zones = zoneRepository.findWithBuildingByMemberId(senderId);   // 건물 표시 순서 → 층
-    if (zones.isEmpty()) {
-      return new TalkDetailResponse.Sender(name, null);
-    }
-    Long firstBuilding = zones.getFirst().getBuilding().getId();
-    String floors = zones.stream().filter(z -> z.getBuilding().getId().equals(firstBuilding))
-        .map(z -> String.valueOf(z.getFloor())).collect(Collectors.joining("·"));
-    return new TalkDetailResponse.Sender(name, zones.getFirst().getBuilding().getName() + " " + floors + "층");
+    return new TalkDetailResponse.Sender(name, MemberZone.label(zoneRepository.findWithBuildingByMemberId(senderId)));
   }
 
   private TalkPost findInMyBuilding(Long talkId, Member me) {

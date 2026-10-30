@@ -58,8 +58,8 @@ public class TalkDetailResponse {
     @Schema(description = "이름", example = "김근로")
     private String name;
 
-    @Schema(description = "글쓴이 담당 구역 (여러 층이면 '북악관 5·6층', 여러 건물이면 첫 건물). 없으면 null",
-        example = "북악관 6층")
+    @Schema(description = "글쓴이 근로 구역 ('북악관 · 6층', 여러 층이면 '북악관 · 5·6층', 여러 건물이면 첫 건물). 없으면 null",
+        example = "북악관 · 6층")
     private String zone;
   }
 

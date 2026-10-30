@@ -546,12 +546,12 @@ class TalkApiIntegrationTest {
       long talkId = send(W1, 6, null, "6층 확인 부탁");
       as(W2, get("/api/talks/{id}", talkId))
           .andExpect(jsonPath("$.data.sender.name").value("김근로"))
-          .andExpect(jsonPath("$.data.sender.zone").value("북악관 5층"));
+          .andExpect(jsonPath("$.data.sender.zone").value("북악관 · 5층"));
 
       // 여러 층 + 다른 건물 → 첫 건물(표시 순서) 기준
       as(W1, put("/api/me/zones"), "[{\"buildingId\":" + bukak + ",\"floors\":[6,5]},{\"buildingId\":" + hyein
           + ",\"floors\":[3]}]").andExpect(status().isOk());
-      as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.sender.zone").value("북악관 5·6층"));
+      as(W2, get("/api/talks/{id}", talkId)).andExpect(jsonPath("$.data.sender.zone").value("북악관 · 5·6층"));
 
       // 담당 구역이 없으면 null (글을 쓴 뒤 구역을 지운 경우)
       jdbc.update("delete from member_zone where member_id = (select id from member where login_id = 'worker01')");

@@ -111,18 +111,7 @@ public class MeService {
   public MeResponse me() {
     Member me = memberAccess.require(Role.WORKER, Role.ADMIN);
     List<MemberZone> zones = zoneRepository.findWithBuildingByMemberId(me.getId());   // 건물 표시 순서 → 층
-    return new MeResponse(me.getId(), me.getLoginId(), me.getName(), me.getRole(), !zones.isEmpty(), zoneLabel(zones));
-  }
-
-  /** "북악관 · 6층", 여러 층이면 "북악관 · 5·6층". 여러 건물이면 첫 건물만. 없으면 null */
-  static String zoneLabel(List<MemberZone> zones) {
-    if (zones.isEmpty()) {
-      return null;
-    }
-    Building first = zones.getFirst().getBuilding();
-    String floors = zones.stream().filter(z -> z.getBuilding().getId().equals(first.getId()))
-        .map(z -> String.valueOf(z.getFloor())).collect(Collectors.joining("·"));
-    return first.getName() + " · " + floors + "층";
+    return new MeResponse(me.getId(), me.getLoginId(), me.getName(), me.getRole(), !zones.isEmpty(), MemberZone.label(zones));
   }
 
   // ---------------- 설정 (권한 W, A) ----------------
