@@ -235,6 +235,47 @@ class ComplaintInboxIntegrationTest {
     }
 
     @Test
+    void 호와_건물명을_떼고_번호로_520_520호_520_호_북악관_520호는_같은_결과() throws Exception {
+      long r520 = roomId("bukak-520");
+      long a = complaint(r520, "STUFFY", "환기 좀 해주세요", "RECEIVED", NOW.minusMinutes(5));
+      long b = complaint(r520, "HOT", null, "DONE", NOW.minusMinutes(50));
+      complaint(r617, "STUFFY", "520호 옆방인데요", "RECEIVED", NOW.minusHours(3));   // 내용에 520 → "520" 단어로는 걸림
+
+      for (String q : List.of("520", "520호", "520 호", "북악관 520호", "  북악관520호  ")) {
+        as(W1, get("/api/complaints").param("q", q))
+            .andExpect(jsonPath("$.data.content[*].complaintId", hasSize(3)))
+            .andExpect(jsonPath("$.data.content[0].complaintId").value(a))
+            .andExpect(jsonPath("$.data.content[1].complaintId").value(b));
+      }
+    }
+
+    @Test
+    void 민원_종류_한글로_검색_내용에_없어도_종류가_맞으면() throws Exception {
+      long stuffy1 = complaint(r618, "STUFFY", null, "RECEIVED", NOW.minusMinutes(5));
+      long stuffy2 = complaint(r617, "HOT,STUFFY", "공기가 안 좋아요", "RECEIVED", NOW.minusMinutes(10));
+      complaint(r617, "HOT", "더워요", "RECEIVED", NOW.minusMinutes(20));
+      complaint(r618, "HUMID", null, "RECEIVED", NOW.minusMinutes(30));
+
+      for (String q : List.of("답답해요", "답답", "stuffy")) {
+        as(W1, get("/api/complaints").param("q", q))
+            .andExpect(jsonPath("$.data.content[*].complaintId", contains((int) stuffy1, (int) stuffy2)));
+      }
+      as(W1, get("/api/complaints").param("q", "덥")).andExpect(jsonPath("$.data.content", hasSize(2)));   // HOT 2건
+      as(W1, get("/api/complaints").param("q", "습")).andExpect(jsonPath("$.data.content", hasSize(1)));
+    }
+
+    @Test
+    void 여러_단어는_모두_맞아야_617_답답은_617호_STUFFY_만() throws Exception {
+      long hit = complaint(r617, "STUFFY", null, "RECEIVED", NOW.minusMinutes(5));
+      complaint(r617, "HOT", null, "RECEIVED", NOW.minusMinutes(10));      // 617 이지만 답답 아님
+      complaint(r618, "STUFFY", null, "RECEIVED", NOW.minusMinutes(20));   // 답답이지만 618
+
+      as(W1, get("/api/complaints").param("q", "617 답답"))
+          .andExpect(jsonPath("$.data.content[*].complaintId", contains((int) hit)))
+          .andExpect(jsonPath("$.data.counts.all").value(1));
+    }
+
+    @Test
     void 미리보기는_50자_넘으면_말줄임() throws Exception {
       complaint(r618, "STUFFY", "가".repeat(60), "RECEIVED", NOW);
       as(W1, get("/api/complaints")).andExpect(jsonPath("$.data.content[0].preview").value("가".repeat(50) + "…"));

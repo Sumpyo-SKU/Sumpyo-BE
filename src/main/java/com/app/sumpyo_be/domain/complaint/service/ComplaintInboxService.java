@@ -7,10 +7,13 @@ import com.app.sumpyo_be.domain.air.Thresholds;
 import com.app.sumpyo_be.domain.complaint.dto.response.ComplaintDetailResponse;
 import com.app.sumpyo_be.domain.complaint.dto.response.ComplaintListResponse;
 import com.app.sumpyo_be.domain.complaint.dto.response.RepeatedComplaintResponse;
+import com.app.sumpyo_be.domain.building.entity.Building;
+import com.app.sumpyo_be.domain.building.repository.BuildingRepository;
 import com.app.sumpyo_be.domain.complaint.entity.Complaint;
 import com.app.sumpyo_be.domain.complaint.entity.ComplaintCategory;
 import com.app.sumpyo_be.domain.complaint.entity.ComplaintStatus;
 import com.app.sumpyo_be.domain.complaint.repository.ComplaintRepository;
+import com.app.sumpyo_be.domain.complaint.repository.ComplaintSearchTerms;
 import com.app.sumpyo_be.domain.complaint.repository.ComplaintSpecs;
 import com.app.sumpyo_be.domain.member.entity.Role;
 import com.app.sumpyo_be.domain.member.service.MemberAccess;
@@ -56,11 +59,20 @@ public class ComplaintInboxService {
   private final MemberAccess memberAccess;
   private final ComplaintRepository complaintRepository;
   private final RoomRepository roomRepository;
+  private final BuildingRepository buildingRepository;
   private final SensorReadingRepository readingRepository;
   private final ActionRepository actionRepository;
   private final ComplaintActionAssembler actionAssembler;
   private final ThresholdService thresholdService;
   private final Clock clock;
+
+  /** 검색어 정리 (건물 이름은 숫자와 같이 쓰면 떼어내므로 이름 목록이 필요). 검색어가 없으면 DB 를 안 읽는다 */
+  private List<ComplaintSearchTerms.Term> searchTerms(String q) {
+    if (q == null || q.isBlank()) {
+      return List.of();
+    }
+    return ComplaintSearchTerms.parse(q, buildingRepository.findAll().stream().map(Building::getName).toList());
+  }
 
   /**
    * 접수 최신순 (created_at DESC, id DESC) 무한 스크롤. size + 1 개를 읽어 다음이 있는지 판단한다.
@@ -71,7 +83,7 @@ public class ComplaintInboxService {
     memberAccess.require(Role.WORKER, Role.ADMIN);
     TimeIdCursor after = TimeIdCursor.decode(cursor);
     Specification<Complaint> base = Specification.where(ComplaintSpecs.inBuilding(buildingId))
-        .and(ComplaintSpecs.inRoom(roomId)).and(ComplaintSpecs.search(q));
+        .and(ComplaintSpecs.inRoom(roomId)).and(ComplaintSpecs.search(searchTerms(q)));
 
     List<Complaint> fetched = complaintRepository.findAll(
         base.and(ComplaintSpecs.hasStatus(status)).and(ComplaintSpecs.before(after)),

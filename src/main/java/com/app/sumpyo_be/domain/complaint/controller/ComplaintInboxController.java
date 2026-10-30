@@ -39,7 +39,7 @@ public class ComplaintInboxController {
 
   @Operation(summary = "민원 목록 (무한 스크롤)",
       description = "권한 W, A. 접수 최신순(created_at DESC, id DESC) 무한 스크롤. 다음 페이지는 응답의 nextCursor 를 cursor 로 "
-          + "(같은 시각이어도 (created_at, id) 로 이어서 중복·누락 없음). q 는 건물명·호실 번호·내용 부분 검색, "
+          + "(같은 시각이어도 (created_at, id) 로 이어서 중복·누락 없음). q 는 호실 번호·건물명·내용·민원 종류(한글) 검색, 단어끼리 AND (자세한 규칙은 q 설명), "
           + "roomId 는 반복 민원 카드의 [관련 민원 확인]용. counts 는 status·cursor 를 뺀 같은 필터 기준.")
   @ApiErrors(value = {GlobalErrorCode.INVALID_CURSOR}, auth = true, validation = true)
   @Tag(name = ScreenTag.INBOX)
@@ -48,7 +48,10 @@ public class ComplaintInboxController {
       @Parameter(description = "탭 (비우면 전체)", example = "RECEIVED") @RequestParam(required = false) ComplaintStatus status,
       @Parameter(description = "건물 ID", example = "1") @RequestParam(required = false) Long buildingId,
       @Parameter(description = "강의실 ID", example = "6") @RequestParam(required = false) Long roomId,
-      @Parameter(description = "검색어 (건물명·호실 번호·내용)", example = "618") @RequestParam(required = false) String q,
+      @Parameter(description = "검색어. 띄어쓰기로 나눈 단어가 모두 맞는 민원 (AND). 단어마다 호실 번호·건물명·내용·민원 종류 중 하나라도 맞으면 됨. "
+          + "'520', '520호', '520 호', '북악관 520호' 는 같은 검색 (호·건물명을 떼고 번호로). "
+          + "민원 종류는 한글 앞부분으로 (답답 → 답답해요, 덥·더워 → 더워요, 춥·추워 → 추워요, 습 → 습해요, 냄새 → 냄새나요, 고장·설비 → 설비 고장)",
+          example = "617 답답") @RequestParam(required = false) String q,
       @Parameter(description = "이전 응답의 nextCursor") @RequestParam(required = false) String cursor,
       @Parameter(description = "페이지 크기 (1~50)", example = "20")
       @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size) {
