@@ -7,6 +7,7 @@ import com.app.sumpyo_be.domain.action.dto.response.ActionStatusResponse;
 import com.app.sumpyo_be.domain.action.dto.request.ActionStepRequest;
 import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
 import com.app.sumpyo_be.domain.action.entity.Action;
+import com.app.sumpyo_be.domain.action.entity.ActionSource;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.entity.PlanStep;
 import com.app.sumpyo_be.domain.action.entity.Recommend;
@@ -31,6 +32,7 @@ import com.app.sumpyo_be.domain.room.repository.RoomRepository;
 import com.app.sumpyo_be.domain.schedule.entity.ClassSchedule;
 import com.app.sumpyo_be.domain.schedule.service.ClassScheduleService;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -64,21 +66,30 @@ public class ActionService {
   /** 목록 기본 상태: 아직 끝나지 않은 조치 */
   static final List<ActionStatus> ACTIVE = List.of(ActionStatus.PENDING, ActionStatus.CHECKED, ActionStatus.IN_PROGRESS);
 
+  /** 대기 중 예측 조치는 예상 시각이 이만큼 지나면 만료 (목록에서 빼고 스케줄러가 EXPIRED 로) */
+  static final Duration STALE_AFTER = Duration.ofHours(1);
+
   /**
    * 조치 목록, expectedAt(없으면 createdAt) 오름차순 = 급한 것부터.
+   * 대기 중 예측 조치인데 예상 시각이 1시간 넘게 지났으면 뺀다 (스케줄러가 EXPIRED 로 바꾸기 전에도).
    * @param zone     null 이면 전체, "mine" 이면 내 담당 구역(member_zone 건물+층)의 방만. 담당 구역이 없으면 빈 목록
    * @param buildingId null 이 아니면 그 건물 방만 (zone 과 함께 쓸 수 있음, 홈 "창문 환기 예측 · 북악관")
    * @param statuses null/빈 값이면 PENDING·CHECKED·IN_PROGRESS
+   * @param sources  null/빈 값이면 전체. 홈 "창문 환기 예측" 카드는 PREDICTION
    */
   @Transactional(readOnly = true)
-  public List<ActionListItem> list(String zone, Long buildingId, List<ActionStatus> statuses) {
-    List<ActionStatus> filter = statuses == null || statuses.isEmpty() ? ACTIVE : statuses;
+  public List<ActionListItem> list(String zone, Long buildingId, List<ActionStatus> statuses,
+      List<ActionSource> sources) {
+    List<ActionStatus> statusFilter = statuses == null || statuses.isEmpty() ? ACTIVE : statuses;
+    List<ActionSource> sourceFilter = sources == null || sources.isEmpty() ? List.of(ActionSource.values()) : sources;
+    LocalDateTime now = LocalDateTime.now(clock);
+    LocalDateTime staleBefore = now.minus(STALE_AFTER);
     List<Action> actions;
     if (zone == null) {
-      actions = actionRepository.findListByStatusIn(filter);
+      actions = actionRepository.findList(statusFilter, sourceFilter, staleBefore);
     } else if ("mine".equals(zone)) {
       Member me = memberAccess.require(Role.WORKER, Role.ADMIN);
-      actions = actionRepository.findListInMemberZones(me.getId(), filter);
+      actions = actionRepository.findListInMemberZones(me.getId(), statusFilter, sourceFilter, staleBefore);
     } else {
       throw new CustomException(GlobalErrorCode.INVALID_ZONE_FILTER);
     }
@@ -89,12 +100,20 @@ public class ActionService {
       return List.of();
     }
     Thresholds t = thresholdService.current();
-    LocalDateTime now = LocalDateTime.now(clock);
     Map<Long, List<ClassSchedule>> classes = classScheduleService.classesOn(
         actions.stream().map(a -> a.getRoom().getId()).distinct().toList(), now.toLocalDate());
     return actions.stream()
         .map(a -> ActionListItem.of(a, t, now, classStartsBefore(classes.get(a.getRoom().getId()), now, ActionListItem.dueAt(a))))
         .toList();
+  }
+
+  /**
+   * 대기 중(PENDING·CHECKED) 예측 조치 중 예상 시각이 1시간 넘게 지난 것을 EXPIRED 로 (ActionExpireScheduler).
+   * 민원·직접 환기 조치와 진행 중 조치는 건드리지 않는다.
+   * @return 만료한 조치 수
+   */
+  public int expireStalePredictions(LocalDateTime now) {
+    return actionRepository.expireStalePredictions(now.minus(STALE_AFTER));
   }
 
   /** (지금, 예상 시각] 사이에 시작하는 수업이 있는지 (오늘 수업만, 휴강 제외) */

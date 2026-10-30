@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,24 +18,48 @@ public interface ActionRepository extends JpaRepository<Action, Long> {
   Optional<Action> findTopByRoomIdAndStatusInOrderByCreatedAtDesc(Long roomId, Collection<ActionStatus> statuses);
   boolean existsByRoomIdAndStatus(Long roomId, ActionStatus status);
 
-  /** 조치 목록 (전체). 예상 시각(없으면 생성 시각) 오름차순 */
+  /**
+   * 조치 목록 (전체). 예상 시각(없으면 생성 시각) 오름차순.
+   * 대기 중(PENDING·CHECKED) 예측 조치인데 예상 시각이 staleBefore 보다 이전이면 뺀다 (스케줄러가 EXPIRED 로 바꾸기 전에도)
+   */
   @Query("""
       select a from Action a join fetch a.room r join fetch r.building
-      where a.status in :statuses
+      where a.status in :statuses and a.source in :sources
+        and not (a.source = com.app.sumpyo_be.domain.action.entity.ActionSource.PREDICTION
+                 and a.status in (com.app.sumpyo_be.domain.action.entity.ActionStatus.PENDING,
+                                  com.app.sumpyo_be.domain.action.entity.ActionStatus.CHECKED)
+                 and a.expectedAt < :staleBefore)
       order by coalesce(a.expectedAt, a.createdAt) asc, a.id asc
       """)
-  List<Action> findListByStatusIn(@Param("statuses") Collection<ActionStatus> statuses);
+  List<Action> findList(@Param("statuses") Collection<ActionStatus> statuses,
+      @Param("sources") Collection<ActionSource> sources, @Param("staleBefore") LocalDateTime staleBefore);
 
-  /** 조치 목록 (내 담당 구역: member_zone 의 건물+층과 같은 방만) */
+  /** 조치 목록 (내 담당 구역: member_zone 의 건물+층과 같은 방만). 나머지 조건은 findList 와 같다 */
   @Query("""
       select a from Action a join fetch a.room r join fetch r.building
-      where a.status in :statuses
+      where a.status in :statuses and a.source in :sources
+        and not (a.source = com.app.sumpyo_be.domain.action.entity.ActionSource.PREDICTION
+                 and a.status in (com.app.sumpyo_be.domain.action.entity.ActionStatus.PENDING,
+                                  com.app.sumpyo_be.domain.action.entity.ActionStatus.CHECKED)
+                 and a.expectedAt < :staleBefore)
         and exists (select 1 from MemberZone z
                     where z.memberId = :memberId and z.building = r.building and z.floor = r.floor)
       order by coalesce(a.expectedAt, a.createdAt) asc, a.id asc
       """)
   List<Action> findListInMemberZones(@Param("memberId") Long memberId,
-      @Param("statuses") Collection<ActionStatus> statuses);
+      @Param("statuses") Collection<ActionStatus> statuses, @Param("sources") Collection<ActionSource> sources,
+      @Param("staleBefore") LocalDateTime staleBefore);
+
+  /** 대기 중(PENDING·CHECKED) 예측 조치 중 예상 시각이 before 보다 이전인 것을 EXPIRED 로 */
+  @Modifying(clearAutomatically = true)
+  @Query("""
+      update Action a set a.status = com.app.sumpyo_be.domain.action.entity.ActionStatus.EXPIRED
+      where a.source = com.app.sumpyo_be.domain.action.entity.ActionSource.PREDICTION
+        and a.status in (com.app.sumpyo_be.domain.action.entity.ActionStatus.PENDING,
+                         com.app.sumpyo_be.domain.action.entity.ActionStatus.CHECKED)
+        and a.expectedAt < :before
+      """)
+  int expireStalePredictions(@Param("before") LocalDateTime before);
 
   /** 기준 초과 예상 시각이 (from, to] 안인 조치 (곧 환기 알림) */
   @Query("""

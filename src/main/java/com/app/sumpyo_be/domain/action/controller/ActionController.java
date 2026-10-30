@@ -10,6 +10,7 @@ import com.app.sumpyo_be.domain.action.dto.response.ActionStatusResponse;
 import com.app.sumpyo_be.domain.action.dto.request.ActionStepRequest;
 import com.app.sumpyo_be.domain.action.dto.request.VentilateRequest;
 import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
+import com.app.sumpyo_be.domain.action.entity.ActionSource;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.service.ActionService;
 import com.app.sumpyo_be.global.common.BaseResponse;
@@ -38,15 +39,18 @@ public class ActionController {
   private final ActionService actionService;
 
   /**
-   * 조치 목록. zone=mine 이면 내 담당 구역만, status 는 쉼표로 여러 개 (기본 PENDING,CHECKED,IN_PROGRESS)
-   * 예: GET /api/actions?zone=mine&status=PENDING,CHECKED
+   * 조치 목록. zone=mine 이면 내 담당 구역만, status·source 는 쉼표로 여러 개 (status 기본 PENDING,CHECKED,IN_PROGRESS, source 기본 전체)
+   * 예: GET /api/actions?zone=mine&source=PREDICTION
    */
   @Operation(summary = "조치 목록", description = "expectedAt 오름차순(급한 것부터). zone=mine 이면 내 담당 구역만, buildingId 면 그 건물만, "
-      + "status 는 쉼표로 여러 개(기본 PENDING,CHECKED,IN_PROGRESS). "
+      + "status 는 쉼표로 여러 개(기본 PENDING,CHECKED,IN_PROGRESS), source 는 쉼표로 여러 개(PREDICTION·COMPLAINT·MANUAL, 비우면 전체). "
+      + "홈 '창문 환기 예측' 카드는 source=PREDICTION 으로 호출 (민원 조치는 민원 접수함에서). "
+      + "대기 중(PENDING·CHECKED) 예측 조치인데 expectedAt 이 1시간 넘게 지났으면 목록에서 빠지고, 서버가 10분마다 EXPIRED 로 바꾼다. "
       + "홈 '창문 환기 예측' 카드: 지났거나 10분 이내면 timeLabel '지금'·relative null·metricLabel 'CO2', "
       + "아니면 timeLabel HH:mm·relative '30분 뒤'·metricLabel 'CO2 예상'. "
       + "title: CLOSE '창문을 닫아주세요', OPEN 이고 그 시각 전에 수업이 시작하면 '수업 전에 열어두세요', 그 외 '창문 열어주세요'. "
-      + "reason: CO2 'N분 뒤 기준 초과 예정'(지났으면 '기준 초과'), 비 예보 CLOSE '1시간 뒤 비 예상', 민원 '학생 민원 접수', 직접 환기 하기 '직접 환기'.")
+      + "reason: CO2 'N분 뒤 기준 초과 예정'(지났으면 '기준 초과'), 비 예보 CLOSE '1시간 뒤 비 예상'(지났으면 '곧 비 예상'), "
+      + "직접 환기 하기 '직접 환기'. 예: GET /api/actions?zone=mine&buildingId=1&source=PREDICTION")
   @ApiErrors(value = {GlobalErrorCode.INVALID_ZONE_FILTER}, auth = true, validation = true)
   @Tag(name = ScreenTag.HOME)
   @GetMapping
@@ -56,8 +60,11 @@ public class ActionController {
       @Parameter(description = "건물 필터 (zone 과 함께 쓸 수 있음). 홈 '창문 환기 예측 · 북악관' 카드", example = "1")
       @RequestParam(required = false) Long buildingId,
       @Parameter(description = "상태 필터 (쉼표로 여러 개)", example = "PENDING,CHECKED")
-      @RequestParam(required = false) List<ActionStatus> status) {
-    return BaseResponse.success(actionService.list(zone, buildingId, status));
+      @RequestParam(required = false) List<ActionStatus> status,
+      @Parameter(description = "발생 원인 필터 (쉼표로 여러 개, PREDICTION·COMPLAINT·MANUAL). 비우면 전체. "
+          + "홈 '창문 환기 예측' 카드는 PREDICTION", example = "PREDICTION")
+      @RequestParam(required = false) List<ActionSource> source) {
+    return BaseResponse.success(actionService.list(zone, buildingId, status, source));
   }
 
   @Operation(summary = "조치 확인", description = "PENDING → CHECKED. 이미 CHECKED 면 그대로 성공, 그 외 상태는 409.")

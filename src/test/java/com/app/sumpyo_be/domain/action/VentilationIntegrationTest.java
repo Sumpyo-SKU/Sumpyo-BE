@@ -43,7 +43,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @SpringBootTest(properties = {
     "sumpyo.simulator.enabled=false",
     "sumpyo.notification.scan-enabled=false",
-    "sumpyo.outdoor.collect-enabled=false", "sumpyo.action.rain-close-enabled=false", "sumpyo.outdoor.api-key=",
+    "sumpyo.outdoor.collect-enabled=false", "sumpyo.action.rain-close-enabled=false", "sumpyo.action.expire-enabled=false", "sumpyo.outdoor.api-key=",
     "sumpyo.action.measure-enabled=false", "sumpyo.action.auto-complete-enabled=false",
     "sumpyo.demo.password=test-demo-password",
     "sumpyo.demo.header-login=true",

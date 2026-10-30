@@ -65,10 +65,10 @@ class ActionListItemTest {
   }
 
   @Test
-  void 민원_조치는_시각과_무관하게_학생_민원_접수() {
+  void 민원_조치도_따로_문구_없이_시각_규칙대로() {
     Action complaint = action(ActionSource.COMPLAINT, Recommend.OPEN, Metric.CO2);
-    assertThat(ActionListItem.reason(complaint, NOW.plusMinutes(20), NOW)).isEqualTo("학생 민원 접수");
-    assertThat(ActionListItem.reason(complaint, NOW.minusMinutes(20), NOW)).isEqualTo("학생 민원 접수");
+    assertThat(ActionListItem.reason(complaint, NOW.minusMinutes(20), NOW)).isEqualTo("기준 초과");
+    assertThat(ActionListItem.reason(complaint, NOW.plusMinutes(20), NOW)).isEqualTo("20분 뒤 기준 초과 예정");
   }
 
   @Test

@@ -41,7 +41,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
     "sumpyo.simulator.enabled=false",
     "sumpyo.notification.scan-enabled=false",
     // 로컬 .env 에 공공데이터 키가 있어도 외부 API 를 부르지 않도록
-    "sumpyo.outdoor.collect-enabled=false", "sumpyo.action.rain-close-enabled=false", "sumpyo.action.auto-complete-enabled=false", "sumpyo.outdoor.api-key=",
+    "sumpyo.outdoor.collect-enabled=false", "sumpyo.action.rain-close-enabled=false", "sumpyo.action.expire-enabled=false", "sumpyo.action.auto-complete-enabled=false", "sumpyo.outdoor.api-key=",
     "sumpyo.demo.password=test-demo-password",
     "sumpyo.demo.header-login=true",   // 토큰 없이 데모 계정(worker01)으로 (로컬 .env 값과 무관하게)
     "DB_USERNAME=unused", "DB_PASSWORD=unused", "DEVICE_KEY_517=test-device-key"
@@ -348,11 +348,20 @@ class MeApiIntegrationTest {
     }
 
     @Test
-    void 민원_조치는_학생_민원_접수() throws Exception {
-      insertAction("bukak-617", "COMPLAINT", "OPEN", null);
-      mvc.perform(get("/api/actions"))
-          .andExpect(jsonPath("$.data[0].reason").value("학생 민원 접수"))
-          .andExpect(jsonPath("$.data[0].timing").value("NOW"));
+    void source_필터_쉼표로_여러_개_비우면_전체() throws Exception {
+      insertAction("bukak-617", "PREDICTION", "OPEN", 20);
+      insertAction("bukak-618", "COMPLAINT", "OPEN", null);
+
+      mvc.perform(get("/api/actions").param("source", "PREDICTION"))
+          .andExpect(jsonPath("$.data", hasSize(1)))
+          .andExpect(jsonPath("$.data[0].room").value("북악관 617호"));
+      mvc.perform(get("/api/actions").param("source", "COMPLAINT"))
+          .andExpect(jsonPath("$.data", hasSize(1)))
+          .andExpect(jsonPath("$.data[0].source").value("COMPLAINT"))
+          .andExpect(jsonPath("$.data[0].reason").value("기준 초과"));   // 민원 문구 없이 시각 규칙대로
+      mvc.perform(get("/api/actions").param("source", "PREDICTION,COMPLAINT")).andExpect(jsonPath("$.data", hasSize(2)));
+      mvc.perform(get("/api/actions")).andExpect(jsonPath("$.data", hasSize(2)));
+      mvc.perform(get("/api/actions").param("source", "WRONG")).andExpect(status().isBadRequest());
     }
 
     @Test

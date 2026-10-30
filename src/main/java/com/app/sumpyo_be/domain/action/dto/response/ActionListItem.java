@@ -62,7 +62,7 @@ public class ActionListItem {
   @Schema(description = "카드 제목 (창문 열어주세요 / 수업 전에 열어두세요 / 창문을 닫아주세요)", example = "수업 전에 열어두세요")
   private String title;
 
-  @Schema(description = "조치 이유 (N분 뒤 기준 초과 예정 / 기준 초과 / 1시간 뒤 비 예상 / 학생 민원 접수 / 직접 환기)",
+  @Schema(description = "조치 이유 (N분 뒤 기준 초과 예정 / 기준 초과 / 1시간 뒤 비 예상 / 곧 비 예상 / 직접 환기)",
       example = "30분 뒤 기준 초과 예정")
   private String reason;
 
@@ -88,7 +88,7 @@ public class ActionListItem {
   @Schema(description = "적정 범위 최댓값 (습도·온도 조치, 내 설정). CO2 는 null", example = "60")
   private Integer rangeMax;
 
-  @Schema(description = "기준 초과(비) 예상 시각 (KST). 민원 조치는 null 일 수 있음", example = "2026-10-16T14:30:00")
+  @Schema(description = "기준 초과(비) 예상 시각 (KST). 민원·직접 환기 조치는 null 일 수 있음", example = "2026-10-16T14:30:00")
   private LocalDateTime expectedAt;
 
   @Schema(description = "조치 상태 (PENDING: 대기, CHECKED: 확인, IN_PROGRESS: 환기 중, DONE: 완료)", example = "PENDING")
@@ -155,9 +155,6 @@ public class ActionListItem {
   }
 
   static String reason(Action a, LocalDateTime at, LocalDateTime now) {
-    if (a.getSource() == ActionSource.COMPLAINT) {
-      return "학생 민원 접수";
-    }
     if (a.getSource() == ActionSource.MANUAL) {
       return Action.MANUAL_SUMMARY;
     }

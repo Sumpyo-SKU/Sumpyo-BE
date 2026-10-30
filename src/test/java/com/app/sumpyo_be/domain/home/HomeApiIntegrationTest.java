@@ -55,7 +55,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
     "sumpyo.simulator.enabled=false",
     "sumpyo.notification.scan-enabled=false",
     "sumpyo.outdoor.collect-enabled=false",
-    "sumpyo.action.rain-close-enabled=false", "sumpyo.action.auto-complete-enabled=false",
+    "sumpyo.action.rain-close-enabled=false", "sumpyo.action.expire-enabled=false", "sumpyo.action.auto-complete-enabled=false",
     "sumpyo.outdoor.api-key=test-key", "sumpyo.outdoor.nx=60", "sumpyo.outdoor.ny=127",
     "sumpyo.outdoor.station=정릉로",
     "sumpyo.demo.password=test-demo-password",
@@ -436,6 +436,51 @@ class HomeApiIntegrationTest {
 
     private long r508() {
       return roomId("bukak-508");
+    }
+  }
+
+  @Nested
+  class StalePredictions {
+
+    @Autowired com.app.sumpyo_be.domain.action.service.ActionService actionService;
+
+    private String status(long actionId) {
+      return jdbc.queryForObject("select status from action where id = ?", String.class, actionId);
+    }
+
+    @Test
+    void 예상_시각이_1시간_넘게_지난_대기_중_예측_조치는_목록에서_빠지고_스케줄러가_EXPIRED() throws Exception {
+      long stalePending = action(r617, "OPEN", "CO2", 1250, NOW.minusMinutes(61), "PENDING", null);
+      long staleChecked = action(r618, "OPEN", "CO2", 1250, NOW.minusMinutes(90), "CHECKED", null);
+      long recent = action(r608, "OPEN", "CO2", 1250, NOW.minusMinutes(59), "PENDING", null);
+      long inProgress = action(r616, "OPEN", "CO2", 1250, NOW.minusHours(2), "IN_PROGRESS", null);
+      long complaint = jdbc.queryForObject("""
+          insert into action (room_id, source, recommend, metric, status, expected_at, created_at)
+          values (?, 'COMPLAINT', 'OPEN', 'CO2', 'PENDING', ?, ?) returning id""", Long.class,
+          r616, NOW.minusHours(3), NOW.minusHours(3));
+
+      // 스케줄러 전에도 목록에서는 빠진다
+      as(W1, get("/api/actions"))
+          .andExpect(jsonPath("$.data[*].actionId", contains((int) complaint, (int) inProgress, (int) recent)));
+
+      assertThat(actionService.expireStalePredictions(NOW)).isEqualTo(2);
+      assertThat(status(stalePending)).isEqualTo("EXPIRED");
+      assertThat(status(staleChecked)).isEqualTo("EXPIRED");
+      assertThat(status(recent)).isEqualTo("PENDING");
+      assertThat(status(inProgress)).isEqualTo("IN_PROGRESS");   // 진행 중은 그대로
+      assertThat(status(complaint)).isEqualTo("PENDING");        // 민원 조치는 그대로
+    }
+
+    @Test
+    void 홈_카드는_source_PREDICTION_이면_예측_조치만() throws Exception {
+      action(r617, "OPEN", "CO2", 1250, NOW.plusMinutes(10), "PENDING", null);
+      jdbc.update("""
+          insert into action (room_id, source, recommend, metric, status, created_at)
+          values (?, 'COMPLAINT', 'OPEN', 'CO2', 'PENDING', ?)""", r618, NOW.minusMinutes(5));
+      as(W1, get("/api/actions").param("buildingId", String.valueOf(bukak)).param("source", "PREDICTION"))
+          .andExpect(jsonPath("$.data", hasSize(1)))
+          .andExpect(jsonPath("$.data[0].number").value("617"))
+          .andExpect(jsonPath("$.data[0].reason").value("10분 뒤 기준 초과 예정"));
     }
   }
 
