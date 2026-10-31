@@ -64,8 +64,8 @@ public class RulePlanner {
   List<RawPlan> options(PlanContext ctx) {
     return switch (ctx.primaryCategory()) {
       case STUFFY, SMELL -> {
-        String reason = ctx.primaryCategory() == ComplaintCategory.SMELL
-            ? "냄새는 창문을 열어 바깥 공기로 빼는 게 가장 빨라요"
+        String reason = ctx.isRoomAlert() ? "CO2 가 높거나 곧 높아져서 창문 환기가 가장 효과적이에요"
+            : ctx.primaryCategory() == ComplaintCategory.SMELL ? "냄새는 창문을 열어 바깥 공기로 빼는 게 가장 빨라요"
             : "답답함은 CO2 가 높아서라 창문 환기가 가장 효과적이에요";
         yield List.of(
             new RawPlan(withAcIfHot(ctx, window(2)), null, reason),

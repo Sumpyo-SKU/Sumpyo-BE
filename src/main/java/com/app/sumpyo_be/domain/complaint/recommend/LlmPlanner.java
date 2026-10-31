@@ -75,7 +75,10 @@ public class LlmPlanner {
 
   static String prompt(PlanContext ctx) {
     StringBuilder sb = new StringBuilder();
-    sb.append("너는 대학 강의실 환기를 맡은 근로생에게 학생 민원을 처리할 방법을 추천해. 아래 JSON 하나로만 답해. 다른 말은 쓰지 마.\n")
+    sb.append(ctx.isRoomAlert()
+            ? "너는 대학 강의실 환기를 맡은 근로생에게 강의실 공기 상황에 대응할 방법을 추천해. "
+            : "너는 대학 강의실 환기를 맡은 근로생에게 학생 민원을 처리할 방법을 추천해. ")
+        .append("아래 JSON 하나로만 답해. 다른 말은 쓰지 마.\n")
         .append("{\"steps\":[{\"type\":\"WINDOW_OPEN\",\"windows\":2},{\"type\":\"AC_ON\",\"targetTemp\":23}],")
         .append("\"summary\":\"창문을 열고 에어컨을 틀어주세요\",\"reason\":\"…\"}\n")
         .append("규칙:\n")
@@ -88,9 +91,13 @@ public class LlmPlanner {
         .append("온도를 쓰면 targetTemp 와 같은 값으로\n")
         .append("- 분·ppm 같은 숫자는 쓰지 마 (시간과 예상 CO2 는 서버가 넣는다)\n")
         .append("- 답답함·냄새는 창문 환기가 기본. 에어컨은 공기를 바꾸지 못하므로 실내가 적정 온도보다 더울 때만 추가\n")
-        .append("- 비 예보가 있거나 미세먼지가 나쁨이면 창문 대신 다른 방법\n")
-        .append("- 민원 분류가 설비 고장일 때만 steps 없이 summary 를 \"시설팀에 고장 신고해주세요\" 로. ")
-        .append("다른 분류는 지금 수치가 정상이어도 학생이 불편을 느낀 것이니 근로생이 할 수 있는 조치를 골라\n");
+        .append("- 비 예보가 있거나 미세먼지가 나쁨이면 창문 대신 다른 방법\n");
+    if (ctx.isRoomAlert()) {
+      sb.append("- CO2 를 낮추는 게 목표라 창문 환기가 기본. steps 는 1개 이상\n");
+    } else {
+      sb.append("- 민원 분류가 설비 고장일 때만 steps 없이 summary 를 \"시설팀에 고장 신고해주세요\" 로. ")
+          .append("다른 분류는 지금 수치가 정상이어도 학생이 불편을 느낀 것이니 근로생이 할 수 있는 조치를 골라\n");
+    }
     if (ctx.co2Over()) {
       sb.append("- 지금 CO2 가 기준(").append(ctx.thresholds().co2())
           .append("ppm) 이상이니 민원 분류와 상관없이 WINDOW_OPEN 단계를 반드시 넣어 ")
@@ -100,10 +107,14 @@ public class LlmPlanner {
       sb.append("- 이전 추천과 다른 방법을 골라\n");
     }
     sb.append("\n상황:\n");
-    sb.append("민원: ").append(ctx.categories().stream().map(ComplaintCategory::getLabel)
-        .collect(Collectors.joining(", ")));
-    if (ctx.content() != null) {
-      sb.append(" / 내용: ").append(ctx.content());
+    if (ctx.isRoomAlert()) {
+      sb.append("상황: ").append(ctx.alert());
+    } else {
+      sb.append("민원: ").append(ctx.categories().stream().map(ComplaintCategory::getLabel)
+          .collect(Collectors.joining(", ")));
+      if (ctx.content() != null) {
+        sb.append(" / 내용: ").append(ctx.content());
+      }
     }
     sb.append('\n');
     sb.append("실내: CO2 ").append(orUnknown(ctx.co2(), "ppm")).append(", 온도 ").append(orUnknown(ctx.temp(), "°C"))

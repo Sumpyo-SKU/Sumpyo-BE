@@ -2,9 +2,12 @@ package com.app.sumpyo_be.global.config;
 
 import com.app.sumpyo_be.domain.member.service.CurrentMemberProvider;
 import com.app.sumpyo_be.global.common.ApiErrors;
+import com.app.sumpyo_be.global.common.ApiSuccessExamples;
 import com.app.sumpyo_be.global.common.PublicApi;
 import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
+import io.swagger.v3.core.util.Json;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.examples.Example;
@@ -72,10 +75,12 @@ public class SwaggerConfig {
     }
 
     @Bean
-    public GroupedOpenApi customGroupedOpenApi(OperationCustomizer demoLoginHeader, OperationCustomizer errorResponses) {
+    public GroupedOpenApi customGroupedOpenApi(OperationCustomizer demoLoginHeader, OperationCustomizer errorResponses,
+            OperationCustomizer successExamples) {
         return GroupedOpenApi.builder().group("api").pathsToMatch("/**")
                 .addOperationCustomizer(demoLoginHeader)
                 .addOperationCustomizer(errorResponses)
+                .addOperationCustomizer(successExamples)
                 .addOpenApiCustomizer(screenTagsFirst())
                 .build();
     }
@@ -146,6 +151,33 @@ public class SwaggerConfig {
             operation.setResponses(responses);
             return operation;
         };
+    }
+
+    /** @ApiSuccessExamples → 200 응답의 (springdoc 이 만든 스키마가 있는) 모든 미디어 타입에 예시 추가 */
+    @Bean
+    public OperationCustomizer successExamples() {
+        return (operation, handlerMethod) -> {
+            ApiSuccessExamples examples = handlerMethod.getMethodAnnotation(ApiSuccessExamples.class);
+            ApiResponse ok = operation.getResponses() == null ? null : operation.getResponses().get("200");
+            if (examples == null || ok == null || ok.getContent() == null) {
+                return operation;
+            }
+            ok.getContent().values().forEach(media -> {
+                for (ExampleObject e : examples.value()) {
+                    media.addExamples(e.name(), new Example().summary(e.summary()).value(parseJson(e.value())));
+                }
+            });
+            return operation;
+        };
+    }
+
+    /** 예시 JSON 문자열 → 객체 (문자열 그대로 넣으면 Swagger UI 에 이스케이프된 문자열로 보인다). 잘못된 JSON 이면 앱이 뜨지 않게 */
+    private static Object parseJson(String json) {
+        try {
+            return Json.mapper().readTree(json);
+        } catch (Exception e) {
+            throw new IllegalStateException("Swagger 예시 JSON 이 올바르지 않습니다: " + e.getMessage(), e);
+        }
     }
 
     private static boolean isPublic(HandlerMethod handlerMethod) {

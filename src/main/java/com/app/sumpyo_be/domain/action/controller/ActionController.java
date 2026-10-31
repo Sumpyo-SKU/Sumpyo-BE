@@ -2,6 +2,7 @@ package com.app.sumpyo_be.domain.action.controller;
 
 import com.app.sumpyo_be.global.common.ScreenTag;
 import com.app.sumpyo_be.global.common.ApiErrors;
+import com.app.sumpyo_be.global.common.ApiSuccessExamples;
 import com.app.sumpyo_be.global.exception.GlobalErrorCode;
 import com.app.sumpyo_be.domain.action.dto.response.ActionCompleteResponse;
 import com.app.sumpyo_be.domain.action.dto.response.ActionListItem;
@@ -13,9 +14,11 @@ import com.app.sumpyo_be.domain.action.dto.response.ComplaintActionResponse;
 import com.app.sumpyo_be.domain.action.entity.ActionSource;
 import com.app.sumpyo_be.domain.action.entity.ActionStatus;
 import com.app.sumpyo_be.domain.action.service.ActionService;
+import com.app.sumpyo_be.domain.complaint.service.ComplaintRecommendationService;
 import com.app.sumpyo_be.global.common.BaseResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import jakarta.validation.Valid;
@@ -29,7 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 조치 목록 · [확인] / [환기 시작] / [완료] */
+/** 조치 목록 · [확인] / [다른 방법] / [환기 시작] / [완료] */
 @RestController
 @Tag(name = "Action", description = "환기 조치 (목록 · 확인 · 시작 · 완료)")
 @RequestMapping("/api/actions")
@@ -37,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ActionController {
 
   private final ActionService actionService;
+  private final ComplaintRecommendationService recommendationService;
 
   /**
    * 조치 목록. zone=mine 이면 내 담당 구역만, status·source 는 쉼표로 여러 개 (status 기본 PENDING,CHECKED,IN_PROGRESS, source 기본 전체)
@@ -73,6 +77,29 @@ public class ActionController {
   @PatchMapping("/{actionId}/check")
   public BaseResponse<ActionStatusResponse> check(@Parameter(description = "조치 ID", example = "88") @PathVariable Long actionId) {
     return BaseResponse.success("확인 처리되었습니다.", actionService.check(actionId));
+  }
+
+  @Operation(summary = "다른 방법 (조치 기준 재추천)",
+      description = "권한 W, A. 강의실 상세(캠퍼스 현황) AI 추천 카드의 [다른 방법]. 본문 없음. "
+          + "출처(PREDICTION·COMPLAINT·MANUAL)와 상관없이 대기 중(PENDING·CHECKED) 조치만, "
+          + "IN_PROGRESS·DONE·EXPIRED 면 409 G049. 그 조치의 summary·plan(steps)·reason·expectedCo2After·source 를 "
+          + "이전과 다른 새 추천으로 바꿔 같은 actionId 로 돌려준다 (응답은 민원 AI 추천 조치와 같은 형식). "
+          + "민원 조치면 같은 조치 행을 바꾸므로 민원 상세 action 에도 그대로 보인다 "
+          + "(POST /api/complaints/{id}/recommendation {\"retry\":true} 도 내부에서 같은 처리). "
+          + "LLM 이 조치를 고르고 시간·예상 CO2 는 서버가 계산(창문 2곳 기준 C_after = 420 + (C−420)·e^(−1.8·분/60), "
+          + "분은 800ppm 아래까지 5분 단위 올림 10~60분), LLM 실패면 규칙 기반(창문 2곳 ↔ 4곳 등). "
+          + "지금 CO2 가 내 기준 이상이면 창문 열기 단계가 반드시 들어가고(LLM 결과에 없으면 규칙 기반) "
+          + "expectedCo2After 가 채워진다 (지금 CO2 를 모르면 null, 0 은 없음).")
+  @ApiSuccessExamples({
+      @ExampleObject(name = "CO2 기준 초과 · 창문", summary = "예측 조치 재추천 (CO2 1,250 → 창문 4곳 15분, 예상 757)",
+          value = ActionRecommendationExamples.REPLAN_WINDOW)})
+  @ApiErrors(value = {GlobalErrorCode.ACTION_NOT_FOUND, GlobalErrorCode.COMPLAINT_NOT_FOUND,
+      GlobalErrorCode.ACTION_NOT_REPLANNABLE}, auth = true)
+  @Tag(name = ScreenTag.CAMPUS)
+  @PostMapping("/{actionId}/recommendation")
+  public BaseResponse<ComplaintActionResponse> recommendation(
+      @Parameter(description = "조치 ID", example = "88") @PathVariable Long actionId) {
+    return BaseResponse.success(recommendationService.recommendForAction(actionId));
   }
 
   @Operation(summary = "환기 시작 / 추천대로 처리 시작",

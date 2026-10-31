@@ -17,6 +17,8 @@ import java.util.List;
  * @param co2In30         그대로 두면 30분 뒤 CO2 (predict.py 예측), 없으면 null
  * @param co2AtClassEnd   그대로 두면 수업(지금, 없으면 다음) 종료 시각 CO2, 없으면 null
  * @param previous        다른 방법(retry)이면 지금까지의 추천 (요약·단계), 아니면 null
+ * @param alert           민원 없는 조치(예측·직접 환기)의 추천이면 상황 문구 ("CO2 기준 초과 (현재 1,150ppm, 기준 1,000ppm)"),
+ *                        민원 추천이면 null. 이때 categories 는 [답답해요]
  */
 public record PlanContext(
     List<ComplaintCategory> categories,
@@ -37,7 +39,8 @@ public record PlanContext(
     Integer reportedHumidity,
     Integer co2In30,
     Integer co2AtClassEnd,
-    Previous previous
+    Previous previous,
+    String alert
 ) {
 
   /** 미세먼지(PM10) 나쁨 이상 (81 ㎍/㎥ 부터) */
@@ -61,6 +64,11 @@ public record PlanContext(
   /** 지금 CO2 가 사용자 기준 이상 → 추천에 창문 열기 단계가 반드시 있어야 한다 */
   public boolean co2Over() {
     return co2 != null && co2 >= thresholds.co2();
+  }
+
+  /** 민원 없이 강의실 상황(예측·직접 환기 조치)으로 만드는 추천 */
+  public boolean isRoomAlert() {
+    return alert != null;
   }
 
   public boolean isRetry() {

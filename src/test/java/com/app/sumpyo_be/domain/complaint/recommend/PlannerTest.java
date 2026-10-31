@@ -29,12 +29,12 @@ class PlannerTest {
   private static PlanContext ctx(ComplaintCategory category, Integer co2, Integer temp, Integer humidity,
       Double outTemp, Integer outHumidity, boolean rain, boolean windowOpen, PlanContext.Previous previous) {
     return new PlanContext(List.of(category), null, co2, temp, humidity, T, outTemp, outHumidity, null, rain,
-        windowOpen, null, null, null, null, null, null, null, previous);
+        windowOpen, null, null, null, null, null, null, null, previous, null);
   }
 
   private static PlanContext withForecast(Integer co2, Integer co2In30, Integer co2AtClassEnd) {
     return new PlanContext(List.of(ComplaintCategory.STUFFY), null, co2, 24, 50, T, null, null, null, false,
-        false, null, null, 1250, 24.1, 61, co2In30, co2AtClassEnd, null);
+        false, null, null, 1250, 24.1, 61, co2In30, co2AtClassEnd, null, null);
   }
 
   @Nested

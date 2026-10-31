@@ -62,6 +62,8 @@ public enum GlobalErrorCode implements BaseErrorCode {
     INVALID_LOGIN_ID("G045", "아이디는 영문 소문자로 시작하는 영문 소문자·숫자 4~20자여야 합니다.", HttpStatus.BAD_REQUEST),
     PASSWORD_CONFIRM_MISMATCH("G046", "비밀번호가 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
     TOO_MANY_LOGIN_ATTEMPTS("G047", "로그인 시도가 너무 많아요. 10분 뒤 다시 시도해주세요.", HttpStatus.TOO_MANY_REQUESTS),
+    // 조치 다른 방법 (G048 은 다른 브랜치에서 사용 중)
+    ACTION_NOT_REPLANNABLE("G049", "진행 중이거나 끝난 조치는 다른 방법을 받을 수 없어요", HttpStatus.CONFLICT),
     ;
 
     private final String code;

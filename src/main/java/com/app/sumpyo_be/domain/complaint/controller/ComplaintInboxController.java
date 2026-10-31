@@ -84,7 +84,8 @@ public class ComplaintInboxController {
 
   @Operation(summary = "AI 추천 조치",
       description = "권한 W, A. 접수(RECEIVED) 민원만, 아니면 409. 대기 중인 추천이 있으면 그대로 돌려주고, "
-          + "{ \"retry\": true }([다른 방법])면 이전 추천과 다른 새 추천으로 교체. "
+          + "{ \"retry\": true }([다른 방법])면 이전 추천과 다른 새 추천으로 교체 (연결된 조치에 대해 "
+          + "POST /api/actions/{actionId}/recommendation 과 같은 처리. 강의실 카드는 그 API 를 쓸 것). "
           + "LLM 이 조치(창문 열기·닫기, 에어컨)를 고르고 시간·예상 CO2 는 서버가 계산 "
           + "(k = 1.8회/시간 × 창문 수/2, 바깥 420ppm, 목표 800ppm, 5분 단위 올림 10~60분). "
           + "LLM 키 없음·10초 타임아웃·검증 실패면 규칙 기반(source RULE). 추천대로 처리 시작은 POST /api/actions/{actionId}/start. "

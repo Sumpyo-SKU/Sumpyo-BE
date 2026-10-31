@@ -704,6 +704,96 @@ class ComplaintInboxIntegrationTest {
     }
   }
 
+  /** POST /api/actions/{actionId}/recommendation : 강의실 카드 [다른 방법] (조치 기준) */
+  @Nested
+  class ActionReplan {
+
+    private ResultActions replan(long actionId) throws Exception {
+      return as(W1, post("/api/actions/{id}/recommendation", actionId));
+    }
+
+    private long predictionAction(long roomId, String status) {
+      return jdbc.queryForObject("""
+          insert into action (room_id, source, recommend, metric, predicted_value, threshold, status, expected_at,
+                              summary, created_at)
+          values (?, 'PREDICTION', 'OPEN', 'CO2', 1150, 1000, ?, ?, '20분 뒤 CO2 1,150ppm 예상', ?) returning id""",
+          Long.class, roomId, status, NOW.plusMinutes(20), NOW.minusMinutes(5));
+    }
+
+    @Test
+    void 예측_조치_재추천은_문구가_바뀌고_창문_단계와_예상_CO2() throws Exception {
+      reading(r618, 1250, 22, 50, NOW.minusMinutes(1));
+      when(llmClient.complete(anyString())).thenReturn("형식이 안 맞는 응답");   // 규칙 기반 (창문 2곳 ↔ 4곳)
+      long id = predictionAction(r618, "PENDING");
+
+      replan(id)
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.data.actionId").value(id))
+          .andExpect(jsonPath("$.data.status").value("PENDING"))
+          .andExpect(jsonPath("$.data.summary").value("창문 2곳을 30분 열어 환기해주세요"))
+          .andExpect(jsonPath("$.data.source").value("RULE"))
+          .andExpect(jsonPath("$.data.steps[?(@.type == 'WINDOW_OPEN')]", hasSize(1)))
+          .andExpect(jsonPath("$.data.expectedCo2After").value(757))
+          .andExpect(jsonPath("$.data.effectMetric").value("CO2"))
+          .andExpect(jsonPath("$.data.effectAfter").value(greaterThan(0)));
+      // 다시 누르면 이전과 다른 대안
+      replan(id)
+          .andExpect(jsonPath("$.data.actionId").value(id))
+          .andExpect(jsonPath("$.data.summary").value("창문 4곳을 15분 열어 환기해주세요"))
+          .andExpect(jsonPath("$.data.expectedCo2After").value(757));
+      assertThat(jdbc.queryForObject("select count(*) from action where room_id = ?", Long.class, r618)).isEqualTo(1);
+    }
+
+    @Test
+    void 강의실_상황을_LLM_에_민원이_아니라_상황으로_넘긴다() throws Exception {
+      reading(r618, 1250, 22, 50, NOW.minusMinutes(1));
+      when(llmClient.complete(anyString())).thenReturn(LLM_OK);
+      replan(predictionAction(r618, "CHECKED")).andExpect(status().isOk()).andExpect(jsonPath("$.data.source").value("LLM"));
+      ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+      verify(llmClient).complete(prompt.capture());
+      assertThat(prompt.getValue()).contains("강의실 공기 상황에 대응할 방법", "상황: CO2 기준 초과 (현재 1,250ppm, 기준 1,000ppm)")
+          .doesNotContain("민원: ");
+    }
+
+    @Test
+    void 민원_조치_재추천은_민원_상세에도_반영() throws Exception {
+      reading(r618, 1250, 22, 50, NOW.minusMinutes(1));
+      when(llmClient.complete(anyString())).thenReturn("형식이 안 맞는 응답");
+      long complaintId = complaint(r618, "STUFFY", "답답해요", "RECEIVED", NOW.minusMinutes(5));
+      long actionId = actionId(recommend(complaintId, false));   // 창문 2곳
+
+      String replanned = replan(actionId)
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.data.summary").value("창문 4곳을 15분 열어 환기해주세요"))
+          .andReturn().getResponse().getContentAsString();
+      as(W1, get("/api/complaints/{id}", complaintId))
+          .andExpect(jsonPath("$.data.action.actionId").value(actionId))
+          .andExpect(jsonPath("$.data.action.summary").value(JsonPath.<String>read(replanned, "$.data.summary")))
+          .andExpect(jsonPath("$.data.action.expectedCo2After").value(757));
+    }
+
+    @Test
+    void 진행_중이거나_끝난_조치는_409() throws Exception {
+      for (String status : List.of("IN_PROGRESS", "DONE", "EXPIRED")) {
+        replan(predictionAction(r618, status))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.message").value("진행 중이거나 끝난 조치는 다른 방법을 받을 수 없어요"));
+      }
+      replan(999_999).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 스웨거에_200_스키마와_예시_409_G049() throws Exception {
+      String docs = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
+          .andReturn().getResponse().getContentAsString();
+      String op = "$.paths['/api/actions/{actionId}/recommendation'].post";
+      assertThat((Object) JsonPath.read(docs, op + ".responses['200'].content['*/*'].schema")).isNotNull();
+      assertThat((java.util.Map<String, Object>) JsonPath.read(docs, op + ".responses['200'].content['*/*'].examples"))
+          .containsKey("CO2 기준 초과 · 창문");
+      assertThat((Object) JsonPath.read(docs, op + ".responses['409']")).asString().contains("G049");
+    }
+  }
+
   @Nested
   class Checklist {
 
